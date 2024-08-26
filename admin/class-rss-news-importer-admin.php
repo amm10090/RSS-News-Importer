@@ -13,8 +13,7 @@ class RSS_News_Importer_Admin {
     public function __construct($plugin_name, $version) {
         $this->plugin_name = $plugin_name;
         $this->version = $version;
-        add_action('admin_menu', array($this, 'add_plugin_admin_menu'));
-        add_action('admin_init', array($this, 'register_settings'));
+        // 移除了直接添加动作的代码
     }
 
     public function enqueue_styles() {
@@ -29,7 +28,13 @@ class RSS_News_Importer_Admin {
         ));
     }
 
+    public function rss_news_importer_general_cb() {
+        echo '<p>' . __('General settings for RSS News Importer.', 'rss-news-importer') . '</p>';
+    }
+
     public function add_plugin_admin_menu() {
+        error_log('RSS News Importer: add_plugin_admin_menu called'); // 调试代码
+
         // 添加主菜单项
         add_menu_page(
             __('RSS News Importer', 'rss-news-importer'),
@@ -41,22 +46,24 @@ class RSS_News_Importer_Admin {
             100
         );
     
-        // 添加仪表盘子菜单
-        add_submenu_page(
-            $this->plugin_name,
-            __('Dashboard', 'rss-news-importer'),
-            'manage_options',
-            $this->plugin_name,
-            array($this, 'display_plugin_dashboard_page')
-        );
-    
         // 添加设置子菜单
         add_submenu_page(
             $this->plugin_name,
             __('Settings', 'rss-news-importer'),
+            __('Settings', 'rss-news-importer'),
             'manage_options',
-            $this->plugin_name . '_settings',
-            array($this, 'display_plugin_setup_page')
+            $this->plugin_name,  // 使用与主菜单相同的 slug
+            array($this, 'display_plugin_settings_page')
+        );
+
+        // 添加测试 RSS 解析器子菜单
+        add_submenu_page(
+            $this->plugin_name,
+            __('Test RSS Parser', 'rss-news-importer'),
+            __('Test RSS Parser', 'rss-news-importer'),
+            'manage_options',
+            $this->plugin_name . '-test-parser',
+            array($this, 'test_rss_parser')
         );
     }
 
@@ -70,7 +77,7 @@ class RSS_News_Importer_Admin {
         include_once plugin_dir_path(dirname(__FILE__)) . 'admin/partials/rss-news-importer-admin-dashboard.php';
     }
     
-    public function display_plugin_setup_page() {
+    public function display_plugin_settings_page() {
         // 确保用户有权限
         if (!current_user_can('manage_options')) {
             return;
@@ -90,14 +97,14 @@ class RSS_News_Importer_Admin {
 
     public function register_settings() {
         register_setting($this->plugin_name, $this->option_name, array($this, 'validate_options'));
-    
+
         add_settings_section(
             'rss_news_importer_general',
             __('General Settings', 'rss-news-importer'),
             array($this, 'rss_news_importer_general_cb'),
             $this->plugin_name
         );
-    
+
         add_settings_field(
             'rss_feeds',
             __('RSS Feeds', 'rss-news-importer'),
@@ -105,7 +112,7 @@ class RSS_News_Importer_Admin {
             $this->plugin_name,
             'rss_news_importer_general'
         );
-    
+
         add_settings_field(
             'update_frequency',
             __('Update Frequency', 'rss-news-importer'),
@@ -113,7 +120,7 @@ class RSS_News_Importer_Admin {
             $this->plugin_name,
             'rss_news_importer_general'
         );
-    
+
         add_settings_field(
             'post_status',
             __('Default Post Status', 'rss-news-importer'),
@@ -131,71 +138,85 @@ class RSS_News_Importer_Admin {
         return $valid;
     }
 
-    public function rss_news_importer_general_cb() {
-        echo '<p>' . __('Configure your RSS News Importer settings here.', 'rss-news-importer') . '</p>';
-    }
-
     public function rss_feeds_cb() {
         $options = get_option($this->option_name);
         $rss_feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
-        echo '<div id="rss-feeds">';
-        foreach ($rss_feeds as $feed) {
-            echo '<div class="rss-feed-item">';
-            echo '<input type="text" name="' . $this->option_name . '[rss_feeds][]" value="' . esc_url($feed) . '" class="regular-text" />';
-            echo ' <button type="button" class="button remove-feed">' . __('Remove', 'rss-news-importer') . '</button>';
-            echo '</div>';
-        }
-        echo '</div>';
-        echo '<button type="button" class="button" id="add-feed">' . __('Add New Feed', 'rss-news-importer') . '</button>';
+        ?>
+        <div id="rss-feeds">
+            <?php foreach ($rss_feeds as $index => $feed) : ?>
+                <p>
+                    <input type="text" name="<?php echo $this->option_name; ?>[rss_feeds][]" value="<?php echo esc_url($feed); ?>" class="regular-text" />
+                    <button type="button" class="button remove-feed"><?php _e('Remove', 'rss-news-importer'); ?></button>
+                </p>
+            <?php endforeach; ?>
+        </div>
+        <button type="button" class="button" id="add-feed"><?php _e('Add New Feed', 'rss-news-importer'); ?></button>
+        <?php
     }
 
     public function update_frequency_cb() {
         $options = get_option($this->option_name);
         $frequency = isset($options['update_frequency']) ? $options['update_frequency'] : 'hourly';
-        $frequencies = array(
-            'hourly' => __('Hourly', 'rss-news-importer'),
-            'twicedaily' => __('Twice Daily', 'rss-news-importer'),
-            'daily' => __('Daily', 'rss-news-importer'),
-        );
-        echo '<select name="' . $this->option_name . '[update_frequency]">';
-        foreach ($frequencies as $value => $label) {
-            echo '<option value="' . $value . '" ' . selected($frequency, $value, false) . '>' . $label . '</option>';
-        }
-        echo '</select>';
+        ?>
+        <select name="<?php echo $this->option_name; ?>[update_frequency]">
+            <option value="hourly" <?php selected($frequency, 'hourly'); ?>><?php _e('Hourly', 'rss-news-importer'); ?></option>
+            <option value="twicedaily" <?php selected($frequency, 'twicedaily'); ?>><?php _e('Twice Daily', 'rss-news-importer'); ?></option>
+            <option value="daily" <?php selected($frequency, 'daily'); ?>><?php _e('Daily', 'rss-news-importer'); ?></option>
+        </select>
+        <?php
     }
 
     public function post_status_cb() {
         $options = get_option($this->option_name);
         $status = isset($options['post_status']) ? $options['post_status'] : 'draft';
-        $statuses = array(
-            'draft' => __('Draft', 'rss-news-importer'),
-            'publish' => __('Published', 'rss-news-importer'),
-        );
-        echo '<select name="' . $this->option_name . '[post_status]">';
-        foreach ($statuses as $value => $label) {
-            echo '<option value="' . $value . '" ' . selected($status, $value, false) . '>' . $label . '</option>';
-        }
-        echo '</select>';
-    }
-
-    private function sanitize_rss_feeds($feeds) {
-        return array_map('esc_url_raw', $feeds);
+        ?>
+        <select name="<?php echo $this->option_name; ?>[post_status]">
+            <option value="draft" <?php selected($status, 'draft'); ?>><?php _e('Draft', 'rss-news-importer'); ?></option>
+            <option value="publish" <?php selected($status, 'publish'); ?>><?php _e('Published', 'rss-news-importer'); ?></option>
+        </select>
+        <?php
     }
 
     public function import_now_ajax() {
         check_ajax_referer('rss_news_importer_nonce', 'security');
     
         if (!current_user_can('manage_options')) {
-            wp_die(__('Unauthorized user', 'rss-news-importer'));
+            wp_send_json_error(__('Unauthorized user', 'rss-news-importer'));
         }
     
         $importer = new RSS_News_Importer_Post_Importer();
-        $result = $importer->import_all_feeds();
-    
-        if ($result) {
-            wp_send_json_success(__('Import completed successfully.', 'rss-news-importer'));
-        } else {
-            wp_send_json_error(__('Import failed. Please check the error log.', 'rss-news-importer'));
+        $options = get_option($this->option_name);
+        $feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
+        
+        $results = array();
+        foreach ($feeds as $feed) {
+            $result = $importer->import_feed($feed);
+            $results[] = sprintf(__('Imported %d posts from %s', 'rss-news-importer'), $result, $feed);
         }
+    
+        wp_send_json_success(implode('<br>', $results));
+    }
+
+    private function sanitize_rss_feeds($feeds) {
+        $sanitized_feeds = array();
+        foreach ($feeds as $feed) {
+            $sanitized_feeds[] = esc_url_raw($feed);
+        }
+        return $sanitized_feeds;
+    }
+    public function test_rss_parser() {
+        $parser = new RSS_News_Importer_Parser();
+        $feed_url = 'https://example.com/rss-feed'; // 替换为实际的RSS feed URL
+        $items = $parser->fetch_feed($feed_url);
+    
+        if ($items === false) {
+            echo "Failed to fetch or parse the feed.";
+            return;
+        }
+    
+        echo "<h2>Parsed RSS Items:</h2>";
+        echo "<pre>";
+        print_r($items);
+        echo "</pre>";
     }
 }

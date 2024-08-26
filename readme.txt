@@ -4,7 +4,7 @@ Donate link: https://blog.amoze.cc/donate
 Tags: rss, news, importer, feed
 Requires at least: 5.2
 Tested up to: 6.4
-Stable tag: 1.2.3.
+Stable tag: 1.2.4
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -57,7 +57,8 @@ No, the import process runs in the background and should not affect your website
 
 = 1.0.0 =
 * Initial release
-
+=1.2.3 =
+修复后台子菜单add_submenu_page 函数接收到了一个数组而不是预期的字符串导致报错的问题。
 == Upgrade Notice ==
 
 = 1.0.0 =

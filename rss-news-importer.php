@@ -11,7 +11,7 @@
  * Plugin Name:       RSS News Importer
  * Plugin URI:        https://blog.amoze.cc/rss-news-importer
  * Description:       Import news articles from RSS feeds into WordPress posts.
- * Version:           1.2.3.
+ * Version:           1.2.4
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            HuaYangTian
@@ -27,7 +27,7 @@ if (!defined('ABSPATH')) {
 }
 
 // 定义插件常量
-define('RSS_NEWS_IMPORTER_VERSION', '1.2.3.');
+define('RSS_NEWS_IMPORTER_VERSION', '1.2.4');
 define('RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -64,6 +64,7 @@ function rss_news_importer_check_requirements() {
  */
 require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer.php';
 require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'admin/class-rss-news-importer-admin.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-rss-parser.php';
 
 /**
  * 开始执行插件
@@ -92,6 +93,19 @@ function run_rss_news_importer() {
         // 注册定时任务钩子
         add_action('rss_news_importer_cron_hook', array($plugin, 'run_importer'));
 
+        
+        // 添加导入日志页面
+        add_action('admin_menu', function() use ($plugin_admin) {
+            add_submenu_page(
+                'tools.php',
+                __('RSS News Importer Log', 'rss-news-importer'),
+                __('RSS News Importer Log', 'rss-news-importer'),
+                'manage_options',
+                'rss-news-importer-log',
+                array($plugin_admin, 'display_import_log')
+            );
+        });
+        
         $plugin->run();
     } else {
         add_action('admin_notices', function() {

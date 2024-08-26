@@ -1,5 +1,3 @@
-<?php
-
 class RSS_News_Importer_Post_Importer {
     private $parser;
     private $logger;

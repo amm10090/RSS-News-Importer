@@ -16,18 +16,28 @@ class RSS_News_Importer_Parser {
         if (!$feed) {
             return false;
         }
-
+    
         $items = array();
-        foreach ($feed->channel->item as $item) {
-            $items[] = array(
-                'title' => (string)$item->title,
-                'link' => (string)$item->link,
-                'description' => (string)$item->description,
-                'pubDate' => (string)$item->pubDate,
-                'author' => (string)$item->author,
+        $feed_items = $feed->channel->item ?? $feed->item ?? array();
+    
+        foreach ($feed_items as $item) {
+            $parsed_item = array(
+                'title' => (string)($item->title ?? ''),
+                'link' => (string)($item->link ?? ''),
+                'description' => (string)($item->description ?? ''),
+                'pubDate' => (string)($item->pubDate ?? ''),
+                'author' => (string)($item->author ?? ''),
                 'categories' => $this->get_categories($item),
                 'thumbnail' => $this->get_thumbnail_url($item),
             );
+    
+            // 尝试获取内容:encoded字段（一些RSS feed使用这个字段来存储完整内容）
+            $content = $item->children('content', true);
+            if (isset($content->encoded)) {
+                $parsed_item['content'] = (string)$content->encoded;
+            }
+    
+            $items[] = $parsed_item;
         }
         return $items;
     }
