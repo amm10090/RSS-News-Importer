@@ -1,4 +1,6 @@
 <?php
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
 /**
  * RSS News Importer
  *
@@ -11,7 +13,7 @@
  * Plugin Name:       RSS News Importer
  * Plugin URI:        https://blog.amoze.cc/rss-news-importer
  * Description:       Import news articles from RSS feeds into WordPress posts.
- * Version:           1.0.3
+ * Version:           1.0.4
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            HuaYangTian
@@ -28,7 +30,7 @@ if ( ! defined( 'WPINC' ) ) {
 }
 
 // 定义插件常量。
-define( 'RSS_NEWS_IMPORTER_VERSION', '1.0.3' );
+define( 'RSS_NEWS_IMPORTER_VERSION', '1.0.4' );
 define( 'RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -67,7 +69,6 @@ function setup_rss_news_importer_updater() {
     // 确保 Plugin Update Checker 库存在
     if ( file_exists( plugin_dir_path( __FILE__ ) . 'plugin-update-checker/plugin-update-checker.php' ) ) {
         require_once plugin_dir_path( __FILE__ ) . 'plugin-update-checker/plugin-update-checker.php';
-        use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
         $myUpdateChecker = PucFactory::buildUpdateChecker(
             'https://github.com/amm10090/RSS-News-Importer/',
@@ -81,8 +82,6 @@ function setup_rss_news_importer_updater() {
         // 启用发布资产
         $myUpdateChecker->getVcsApi()->enableReleaseAssets();
 
-        // 如果使用私有仓库，请取消注释下面的行并添加您的访问令牌
-        // $myUpdateChecker->setAuthentication('your-token-here');
     }
 }
 
