@@ -21,7 +21,7 @@ jobs:
       - name: 设置环境变量
         run: |
           echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          echo "PROJECT_NAME=$(basename ${{ github.repository }})" >> $GITHUB_ENV
+          echo "PROJECT_NAME=RSS News Importer" >> $GITHUB_ENV
         # 设置版本号和项目名称
 
       - name: 显示当前目录结构
@@ -30,9 +30,17 @@ jobs:
           ls -R
         # 用于调试，显示当前的文件结构
 
+      - name: 创建正确的目录结构
+        run: |
+          mkdir -p "${{ env.PROJECT_NAME }}"
+          mv * "${{ env.PROJECT_NAME }}/" || true
+          mv .* "${{ env.PROJECT_NAME }}/" || true
+          mv "${{ env.PROJECT_NAME }}/.git" . || true
+          mv "${{ env.PROJECT_NAME }}/.github" . || true
+
       - name: 创建ZIP文件
         run: |
-          zip -r ${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}.zip . -x '*.git*' '.github/*'
+          zip -r "${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}.zip" "${{ env.PROJECT_NAME }}" -x '*.git*' '.github/*'
           echo "ZIP_FILE=${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}.zip" >> $GITHUB_ENV
         # 创建包含项目文件的ZIP包，排除git和GitHub相关文件
 
