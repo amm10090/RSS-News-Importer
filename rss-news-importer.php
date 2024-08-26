@@ -11,7 +11,7 @@
  * Plugin Name:       RSS News Importer
  * Plugin URI:        https://blog.amoze.cc/rss-news-importer
  * Description:       Import news articles from RSS feeds into WordPress posts.
- * Version:           1.1.8
+ * Version:           1.1.9
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            HuaYangTian
@@ -21,27 +21,58 @@
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  */
 
-// If this file is called directly, abort.
-if (!defined('WPINC')) {
-    die;
+// 如果直接访问此文件,则中止执行
+if (!defined('ABSPATH')) {
+    exit;
 }
 
-// Define plugin constants
-define('RSS_NEWS_IMPORTER_VERSION', '1.1.8');
+// 定义插件常量
+define('RSS_NEWS_IMPORTER_VERSION', '1.1.9');
 define('RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 /**
- * The core plugin class that is used to define internationalization,
- * admin-specific hooks, and public-facing site hooks.
+ * 检查PHP和WordPress版本要求
  */
-require_once plugin_dir_path(__FILE__) . 'includes/class-rss-news-importer.php';
-require_once plugin_dir_path(__FILE__) . 'admin/class-rss-news-importer-admin.php';
+function rss_news_importer_check_requirements() {
+    $php_version = phpversion();
+    $wp_version = get_bloginfo('version');
+    $php_min_version = '7.2';
+    $wp_min_version = '5.2';
+
+    $requirements_met = true;
+
+    if (version_compare($php_version, $php_min_version, '<')) {
+        add_action('admin_notices', function() use ($php_version, $php_min_version) {
+            echo '<div class="error"><p>' . sprintf(__('RSS News Importer requires PHP version %s or higher. Your current version is %s.', 'rss-news-importer'), $php_min_version, $php_version) . '</p></div>';
+        });
+        $requirements_met = false;
+    }
+
+    if (version_compare($wp_version, $wp_min_version, '<')) {
+        add_action('admin_notices', function() use ($wp_version, $wp_min_version) {
+            echo '<div class="error"><p>' . sprintf(__('RSS News Importer requires WordPress version %s or higher. Your current version is %s.', 'rss-news-importer'), $wp_min_version, $wp_version) . '</p></div>';
+        });
+        $requirements_met = false;
+    }
+
+    return $requirements_met;
+}
 
 /**
- * Begins execution of the plugin.
+ * 插件主要功能类
+ */
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer.php';
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'admin/class-rss-news-importer-admin.php';
+
+/**
+ * 开始执行插件
  */
 function run_rss_news_importer() {
+    if (!rss_news_importer_check_requirements()) {
+        return;
+    }
+
     if (class_exists('RSS_News_Importer')) {
         $plugin = new RSS_News_Importer();
         $plugin_admin = new RSS_News_Importer_Admin($plugin->get_plugin_name(), $plugin->get_version());
@@ -53,22 +84,20 @@ function run_rss_news_importer() {
         // 其他管理页面相关的钩子
         add_action('admin_menu', array($plugin_admin, 'add_plugin_admin_menu'));
         add_action('admin_init', array($plugin_admin, 'register_settings'));
-add_action('wp_ajax_rss_news_importer_import_now', array($plugin_admin, 'import_now_ajax'));
-        // 注册激活钩子
+        add_action('wp_ajax_rss_news_importer_import_now', array($plugin_admin, 'import_now_ajax'));
+
+        // 注册激活、停用和卸载钩子
         register_activation_hook(__FILE__, array($plugin, 'activate'));
-        // 注册停用钩子
         register_deactivation_hook(__FILE__, array($plugin, 'deactivate'));
-        // 注册卸载钩子
         register_uninstall_hook(__FILE__, array('RSS_News_Importer', 'uninstall'));
 
         // 注册定时任务钩子
         add_action('rss_news_importer_cron_hook', array($plugin, 'run_importer'));
-// AJAX 动作
-add_action('wp_ajax_rss_news_importer_import_now', array($plugin_admin, 'import_now_ajax'));
+
         $plugin->run();
     } else {
         add_action('admin_notices', function() {
-            echo '<div class="error"><p>RSS News Importer Error: Core class not found.</p></div>';
+            echo '<div class="error"><p>' . __('RSS News Importer Error: Core class not found.', 'rss-news-importer') . '</p></div>';
         });
     }
 }
@@ -77,7 +106,7 @@ add_action('wp_ajax_rss_news_importer_import_now', array($plugin_admin, 'import_
 add_action('plugins_loaded', 'run_rss_news_importer');
 
 /**
- * Setup plugin updater
+ * 设置插件更新检查器
  */
 function setup_rss_news_importer_updater() {
     if (file_exists(__DIR__ . '/plugin-update-checker/plugin-update-checker.php')) {
@@ -89,10 +118,10 @@ function setup_rss_news_importer_updater() {
             'RSS News Importer'
         );
 
-        // Set the branch that contains the stable release.
+        // 设置包含稳定版本的分支
         $myUpdateChecker->setBranch('main');
 
-        // Enable release assets
+        // 启用发布资源
         $myUpdateChecker->getVcsApi()->enableReleaseAssets();
     }
 }

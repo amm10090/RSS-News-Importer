@@ -1,9 +1,34 @@
-.wrap {
+.rss-news-importer-admin {
     max-width: 800px;
+    margin: 0 auto;
 }
 
-#rss-feeds p {
+.rss-news-importer-container {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+.rss-news-importer-container h2 {
+    margin-top: 0;
+}
+
+#rss-feeds .rss-feed-item {
     margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+#rss-feeds .rss-feed-item input[type="text"] {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+#add-feed {
+    margin-top: 10px;
 }
 
 #import-result {
@@ -11,4 +36,23 @@
     padding: 10px;
     background-color: #f0f0f0;
     border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* 响应式设计 */
+@media screen and (max-width: 782px) {
+    .rss-news-importer-container {
+        padding: 15px;
+    }
+
+    #rss-feeds .rss-feed-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    #rss-feeds .rss-feed-item input[type="text"] {
+        margin-right: 0;
+        margin-bottom: 10px;
+        width: 100%;
+    }
 }
