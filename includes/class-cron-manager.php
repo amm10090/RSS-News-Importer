@@ -1,98 +1,43 @@
 <?php
 /**
- * The admin-specific functionality of the plugin.
+ * Manages the cron jobs for RSS News Importer.
  *
  * @link       https://blog.amoze.cc/
  * @since      1.0.0
  *
  * @package    RSS_News_Importer
- * @subpackage RSS_News_Importer/admin
+ * @subpackage RSS_News_Importer/includes
  */
 
-class RSS_News_Importer_Admin {
+class RSS_News_Importer_Cron_Manager {
 
     private $plugin_name;
     private $version;
+    private $logger;
 
-    public function __construct( $plugin_name, $version ) {
+    public function __construct($plugin_name, $version) {
         $this->plugin_name = $plugin_name;
         $this->version = $version;
-
-        add_action( 'admin_menu', array( $this, 'add_plugin_admin_menu' ) );
-        add_action( 'admin_init', array( $this, 'register_settings' ) );
-        add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_styles' ) );
-        add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+        $this->logger = new RSS_News_Importer_Logger();
     }
 
-    public function enqueue_styles() {
-        wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/rss-news-importer-admin.css', array(), $this->version, 'all' );
-    }
-
-    public function enqueue_scripts() {
-        wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/rss-news-importer-admin.js', array( 'jquery' ), $this->version, false );
-    }
-
-    public function add_plugin_admin_menu() {
-        add_options_page(
-            'RSS News Importer Settings', 
-            'RSS News Importer', 
-            'manage_options', 
-            $this->plugin_name, 
-            array( $this, 'display_plugin_setup_page' )
-        );
-    }
-
-    public function add_action_links( $links ) {
-        $settings_link = array(
-            '<a href="' . admin_url( 'options-general.php?page=' . $this->plugin_name ) . '">' . __( 'Settings', $this->plugin_name ) . '</a>',
-        );
-        return array_merge( $settings_link, $links );
-    }
-
-    public function display_plugin_setup_page() {
-        include_once 'partials/rss-news-importer-admin-display.php';
-    }
-
-    public function register_settings() {
-        register_setting( 
-            $this->plugin_name, 
-            $this->plugin_name . '_feed_urls', 
-            array( $this, 'validate_feed_urls' )
-        );
-        register_setting( 
-            $this->plugin_name, 
-            $this->plugin_name . '_import_frequency'
-        );
-        register_setting( 
-            $this->plugin_name, 
-            $this->plugin_name . '_post_status'
-        );
-        register_setting( 
-            $this->plugin_name, 
-            $this->plugin_name . '_category'
-        );
-    }
-
-    public function validate_feed_urls( $input ) {
-        $valid = array();
-        foreach ( $input as $url ) {
-            $valid[] = esc_url_raw( $url );
+    public function schedule_import() {
+        if (!wp_next_scheduled('rss_news_importer_cron_hook')) {
+            wp_schedule_event(time(), $this->get_import_frequency(), 'rss_news_importer_cron_hook');
+            $this->logger->log('Cron job scheduled for RSS import');
         }
-        return $valid;
     }
 
-    public function get_import_frequencies() {
-        return array(
-            'hourly' => __('Hourly', $this->plugin_name),
-            'twicedaily' => __('Twice Daily', $this->plugin_name),
-            'daily' => __('Daily', $this->plugin_name),
-        );
+    public function unschedule_import() {
+        $timestamp = wp_next_scheduled('rss_news_importer_cron_hook');
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, 'rss_news_importer_cron_hook');
+            $this->logger->log('Cron job unscheduled for RSS import');
+        }
     }
 
-    public function get_post_statuses() {
-        return array(
-            'draft' => __('Draft', $this->plugin_name),
-            'publish' => __('Published', $this->plugin_name),
-        );
+    private function get_import_frequency() {
+        $options = get_option($this->plugin_name . '_options');
+        return isset($options['import_frequency']) ? $options['import_frequency'] : 'hourly';
     }
 }

@@ -11,7 +11,7 @@
  * Plugin Name:       RSS News Importer
  * Plugin URI:        https://blog.amoze.cc/rss-news-importer
  * Description:       Import news articles from RSS feeds into WordPress posts.
- * Version:           1.1.2
+ * Version:           1.1.3
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            HuaYangTian
@@ -22,36 +22,55 @@
  */
 
 // If this file is called directly, abort.
-if ( ! defined( 'WPINC' ) ) {
+if (!defined('WPINC')) {
     die;
 }
 
 // Define plugin constants
-define( 'RSS_NEWS_IMPORTER_VERSION', '1.1.2' );
-define( 'RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define('RSS_NEWS_IMPORTER_VERSION', '1.1.3');
+define('RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 /**
  * The core plugin class that is used to define internationalization,
  * admin-specific hooks, and public-facing site hooks.
  */
-$class_file = plugin_dir_path( __FILE__ ) . 'includes/class-rss-news-importer.php';
-if ( file_exists( $class_file ) ) {
-    require_once $class_file;
-} else {
-    add_action( 'admin_notices', function() {
-        echo '<div class="error"><p>RSS News Importer Error: Core class file not found.</p></div>';
-    });
+require_once plugin_dir_path(__FILE__) . 'includes/class-rss-news-importer.php';
+
+/**
+ * Begins execution of the plugin.
+ */
+function run_rss_news_importer() {
+    if (class_exists('RSS_News_Importer')) {
+        $plugin = new RSS_News_Importer();
+        $plugin->run();
+
+        // 注册激活钩子
+        register_activation_hook(__FILE__, array($plugin, 'activate'));
+        // 注册停用钩子
+        register_deactivation_hook(__FILE__, array($plugin, 'deactivate'));
+        // 注册卸载钩子
+        register_uninstall_hook(__FILE__, array('RSS_News_Importer', 'uninstall'));
+
+        // 注册定时任务钩子
+        add_action('rss_news_importer_cron_hook', array($plugin, 'run_importer'));
+    } else {
+        add_action('admin_notices', function() {
+            echo '<div class="error"><p>RSS News Importer Error: Core class not found.</p></div>';
+        });
+    }
 }
+
+// 初始化插件
+add_action('plugins_loaded', 'run_rss_news_importer');
 
 /**
  * Setup plugin updater
  */
 function setup_rss_news_importer_updater() {
-    if ( file_exists( __DIR__ . '/plugin-update-checker/plugin-update-checker.php' ) ) {
+    if (file_exists(__DIR__ . '/plugin-update-checker/plugin-update-checker.php')) {
         require_once __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
         
-        // 使用完全限定名称而不是 use 语句
         $myUpdateChecker = YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
             'https://github.com/amm10090/RSS-News-Importer',
             __FILE__,
@@ -66,20 +85,5 @@ function setup_rss_news_importer_updater() {
     }
 }
 
-/**
- * Begins execution of the plugin.
- */
-function run_rss_news_importer() {
-    if ( class_exists( 'RSS_News_Importer' ) ) {
-        $plugin = new RSS_News_Importer();
-        $plugin->run();
-    } else {
-        add_action( 'admin_notices', function() {
-            echo '<div class="error"><p>RSS News Importer Error: Core class not found.</p></div>';
-        });
-    }
-}
-
-// Initialize plugin
-add_action( 'plugins_loaded', 'setup_rss_news_importer_updater' );
-add_action( 'plugins_loaded', 'run_rss_news_importer' );
+// 初始化插件更新检查器
+add_action('plugins_loaded', 'setup_rss_news_importer_updater');

@@ -10,6 +10,7 @@
  */
 
 class RSS_News_Importer_Admin {
+
     private $plugin_name;
     private $version;
     private $option_name;

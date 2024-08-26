@@ -12,45 +12,12 @@
 
 class RSS_News_Importer {
 
-    /**
-     * The loader that's responsible for maintaining and registering all hooks that power
-     * the plugin.
-     *
-     * @since    1.0.0
-     * @access   protected
-     * @var      RSS_News_Importer_Loader    $loader    Maintains and registers all hooks for the plugin.
-     */
     protected $loader;
-
-    /**
-     * The unique identifier of this plugin.
-     *
-     * @since    1.0.0
-     * @access   protected
-     * @var      string    $plugin_name    The string used to uniquely identify this plugin.
-     */
     protected $plugin_name;
-
-    /**
-     * The current version of the plugin.
-     *
-     * @since    1.0.0
-     * @access   protected
-     * @var      string    $version    The current version of the plugin.
-     */
     protected $version;
 
-    /**
-     * Define the core functionality of the plugin.
-     *
-     * Set the plugin name and the plugin version that can be used throughout the plugin.
-     * Load the dependencies, define the locale, and set the hooks for the admin area and
-     * the public-facing side of the site.
-     *
-     * @since    1.0.0
-     */
     public function __construct() {
-        if ( defined( 'RSS_NEWS_IMPORTER_VERSION' ) ) {
+        if (defined('RSS_NEWS_IMPORTER_VERSION')) {
             $this->version = RSS_NEWS_IMPORTER_VERSION;
         } else {
             $this->version = '1.0.0';
@@ -63,128 +30,74 @@ class RSS_News_Importer {
         $this->define_public_hooks();
     }
 
-    /**
-     * Load the required dependencies for this plugin.
-     *
-     * Include the following files that make up the plugin:
-     *
-     * - RSS_News_Importer_Loader. Orchestrates the hooks of the plugin.
-     * - RSS_News_Importer_i18n. Defines internationalization functionality.
-     * - RSS_News_Importer_Admin. Defines all hooks for the admin area.
-     * - RSS_News_Importer_Public. Defines all hooks for the public side of the site.
-     *
-     * Create an instance of the loader which will be used to register the hooks
-     * with WordPress.
-     *
-     * @since    1.0.0
-     * @access   private
-     */
     private function load_dependencies() {
-        /**
-         * The class responsible for orchestrating the actions and filters of the
-         * core plugin.
-         */
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-rss-news-importer-loader.php';
-
-        /**
-         * The class responsible for defining internationalization functionality
-         * of the plugin.
-         */
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-rss-news-importer-i18n.php';
-
-        /**
-         * The class responsible for defining all actions that occur in the admin area.
-         */
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-rss-news-importer-admin.php';
-
-        /**
-         * The class responsible for defining all actions that occur in the public-facing
-         * side of the site.
-         */
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-rss-news-importer-public.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-rss-news-importer-loader.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-rss-news-importer-i18n.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-rss-news-importer-admin.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'public/class-rss-news-importer-public.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-post-importer.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-cron-manager.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-logger.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-queue.php';
 
         $this->loader = new RSS_News_Importer_Loader();
     }
 
-    /**
-     * Define the locale for this plugin for internationalization.
-     *
-     * Uses the RSS_News_Importer_i18n class in order to set the domain and to register the hook
-     * with WordPress.
-     *
-     * @since    1.0.0
-     * @access   private
-     */
     private function set_locale() {
         $plugin_i18n = new RSS_News_Importer_i18n();
-        $this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain' );
+        $this->loader->add_action('plugins_loaded', $plugin_i18n, 'load_plugin_textdomain');
     }
 
-    /**
-     * Register all of the hooks related to the admin area functionality
-     * of the plugin.
-     *
-     * @since    1.0.0
-     * @access   private
-     */
     private function define_admin_hooks() {
-        $plugin_admin = new RSS_News_Importer_Admin( $this->get_plugin_name(), $this->get_version() );
+        $plugin_admin = new RSS_News_Importer_Admin($this->get_plugin_name(), $this->get_version());
 
-        $this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
-        $this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
+        $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_styles');
+        $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
+        $this->loader->add_action('admin_menu', $plugin_admin, 'add_plugin_admin_menu');
+        $this->loader->add_action('admin_init', $plugin_admin, 'register_settings');
     }
 
-    /**
-     * Register all of the hooks related to the public-facing functionality
-     * of the plugin.
-     *
-     * @since    1.0.0
-     * @access   private
-     */
     private function define_public_hooks() {
-        $plugin_public = new RSS_News_Importer_Public( $this->get_plugin_name(), $this->get_version() );
+        $plugin_public = new RSS_News_Importer_Public($this->get_plugin_name(), $this->get_version());
 
-        $this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
-        $this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
+        $this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_styles');
+        $this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_scripts');
     }
 
-    /**
-     * Run the loader to execute all of the hooks with WordPress.
-     *
-     * @since    1.0.0
-     */
     public function run() {
         $this->loader->run();
     }
 
-    /**
-     * The name of the plugin used to uniquely identify it within the context of
-     * WordPress and to define internationalization functionality.
-     *
-     * @since     1.0.0
-     * @return    string    The name of the plugin.
-     */
     public function get_plugin_name() {
         return $this->plugin_name;
     }
 
-    /**
-     * The reference to the class that orchestrates the hooks with the plugin.
-     *
-     * @since     1.0.0
-     * @return    RSS_News_Importer_Loader    Orchestrates the hooks of the plugin.
-     */
     public function get_loader() {
         return $this->loader;
     }
 
-    /**
-     * Retrieve the version number of the plugin.
-     *
-     * @since     1.0.0
-     * @return    string    The version number of the plugin.
-     */
     public function get_version() {
         return $this->version;
+    }
+
+    public function activate() {
+        $cron_manager = new RSS_News_Importer_Cron_Manager($this->get_plugin_name(), $this->get_version());
+        $cron_manager->schedule_import();
+    }
+
+    public function deactivate() {
+        $cron_manager = new RSS_News_Importer_Cron_Manager($this->get_plugin_name(), $this->get_version());
+        $cron_manager->unschedule_import();
+    }
+
+    public static function uninstall() {
+        // 清理插件相关的数据和选项
+        delete_option('rss_news_importer_options');
+        // 可以在这里添加其他清理操作
+    }
+
+    public function run_importer() {
+        $importer = new RSS_News_Importer_Post_Importer($this->get_plugin_name(), $this->get_version());
+        $importer->import_feeds();
     }
 }
