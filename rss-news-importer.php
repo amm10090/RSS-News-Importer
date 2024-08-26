@@ -1,5 +1,4 @@
 <?php
-use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 /**
  * Plugin Name: RSS News Importer
  * Plugin URI:  https://blog.amoze.cc/rss-news-importer
@@ -47,16 +46,13 @@ register_deactivation_hook( __FILE__, 'deactivate_rss_news_importer' );
 require plugin_dir_path( __FILE__ ) . 'includes/class-rss-news-importer.php';
 
 /**
- * Begins execution of the plugin.
+ * Setup plugin updater
  */
-function run_rss_news_importer() {
-    $plugin = new RSS_News_Importer();
-    $plugin->run();
-}
-// Add update checker
-public function setup_updater() {
-    if (file_exists(__DIR__ . '/plugin-update-checker/plugin-update-checker.php')) {
+function setup_rss_news_importer_updater() {
+    if ( file_exists( __DIR__ . '/plugin-update-checker/plugin-update-checker.php' ) ) {
         require_once __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
+        
+        use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
         $myUpdateChecker = PucFactory::buildUpdateChecker(
             'https://github.com/amm10090/RSS-News-Importer',
@@ -71,6 +67,16 @@ public function setup_updater() {
         $myUpdateChecker->getVcsApi()->enableReleaseAssets();
     }
 }
+
+/**
+ * Begins execution of the plugin.
+ */
+function run_rss_news_importer() {
+    $plugin = new RSS_News_Importer();
+    $plugin->run();
+
+    // Setup updater
+    setup_rss_news_importer_updater();
 }
 
 run_rss_news_importer();

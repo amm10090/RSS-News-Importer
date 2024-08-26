@@ -1,0 +1,69 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up environment
+        run: |
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          echo "PROJECT_NAME=$(basename ${{ github.repository }})" >> $GITHUB_ENV
+
+      - name: Display current directory structure
+        run: |
+          echo "Current directory structure:"
+          ls -R
+
+      - name: Create ZIP file
+        run: |
+          zip -r ${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}.zip . -x '*.git*' '.github/*'
+          echo "ZIP_FILE=${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}.zip" >> $GITHUB_ENV
+
+      - name: Check ZIP file
+        run: |
+          if [ ! -f "${{ env.ZIP_FILE }}" ]; then
+            echo "Error: ZIP file not created"
+            exit 1
+          fi
+          echo "ZIP file created successfully: ${{ env.ZIP_FILE }}"
+
+      - name: Get recent commits
+        run: |
+          COMMITS=$(git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 @^)..@)
+          echo "RECENT_COMMITS<<EOF" >> $GITHUB_ENV
+          echo "$COMMITS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Generate release notes
+        run: |
+          echo "Release Notes for ${{ env.PROJECT_NAME }} v${{ env.RELEASE_VERSION }}" > release_notes.md
+          echo "" >> release_notes.md
+          echo "Recent changes:" >> release_notes.md
+          echo "${{ env.RECENT_COMMITS }}" >> release_notes.md
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ env.RELEASE_VERSION }} \
+            --title "${{ env.PROJECT_NAME }} ${{ env.RELEASE_VERSION }}" \
+            --notes-file release_notes.md \
+            ${{ env.ZIP_FILE }}
+
+      - name: Clean up
+        if: always()
+        run: |
+          rm -f ${{ env.ZIP_FILE }}
+          rm -f release_notes.md
