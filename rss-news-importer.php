@@ -11,7 +11,7 @@
  * Plugin Name:       RSS News Importer
  * Plugin URI:        https://blog.amoze.cc/rss-news-importer
  * Description:       Import news articles from RSS feeds into WordPress posts.
- * Version:           1.1.6
+ * Version:           1.1.7
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            HuaYangTian
@@ -27,7 +27,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('RSS_NEWS_IMPORTER_VERSION', '1.1.6');
+define('RSS_NEWS_IMPORTER_VERSION', '1.1.7');
 define('RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -36,6 +36,7 @@ define('RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url(__FILE__));
  * admin-specific hooks, and public-facing site hooks.
  */
 require_once plugin_dir_path(__FILE__) . 'includes/class-rss-news-importer.php';
+require_once plugin_dir_path(__FILE__) . 'admin/class-rss-news-importer-admin.php';
 
 /**
  * Begins execution of the plugin.
@@ -43,8 +44,6 @@ require_once plugin_dir_path(__FILE__) . 'includes/class-rss-news-importer.php';
 function run_rss_news_importer() {
     if (class_exists('RSS_News_Importer')) {
         $plugin = new RSS_News_Importer();
-        $plugin->run();
-
         $plugin_admin = new RSS_News_Importer_Admin($plugin->get_plugin_name(), $plugin->get_version());
     
         // 注册样式和脚本加载函数
@@ -54,8 +53,7 @@ function run_rss_news_importer() {
         // 其他管理页面相关的钩子
         add_action('admin_menu', array($plugin_admin, 'add_plugin_admin_menu'));
         add_action('admin_init', array($plugin_admin, 'register_settings'));
-    }
-    
+
         // 注册激活钩子
         register_activation_hook(__FILE__, array($plugin, 'activate'));
         // 注册停用钩子
@@ -65,6 +63,8 @@ function run_rss_news_importer() {
 
         // 注册定时任务钩子
         add_action('rss_news_importer_cron_hook', array($plugin, 'run_importer'));
+
+        $plugin->run();
     } else {
         add_action('admin_notices', function() {
             echo '<div class="error"><p>RSS News Importer Error: Core class not found.</p></div>';
