@@ -20,9 +20,7 @@ class RSS_News_Importer_Admin
         add_action('wp_ajax_rss_news_importer_import_now', array($this, 'import_now_ajax'));
         add_action('wp_ajax_rss_news_importer_add_feed', array($this, 'add_feed_ajax'));
         add_action('wp_ajax_rss_news_importer_remove_feed', array($this, 'remove_feed_ajax'));
-        // 新增：添加查看日志的 AJAX 处理
         add_action('wp_ajax_rss_news_importer_view_logs', array($this, 'view_logs_ajax'));
-        // 新增：添加预览文章的 AJAX 处理
         add_action('wp_ajax_rss_news_importer_preview_feed', array($this, 'preview_feed_ajax'));
     }
 
@@ -63,7 +61,6 @@ class RSS_News_Importer_Admin
             return;
         }
 
-        // 修复：只在设置更新时添加一次成功消息
         if (isset($_GET['settings-updated']) && $_GET['settings-updated']) {
             add_settings_error('rss_news_importer_messages', 'rss_news_importer_message', __('Settings Saved', 'rss-news-importer'), 'updated');
         }
@@ -116,11 +113,18 @@ class RSS_News_Importer_Admin
             'rss_news_importer_general'
         );
 
-        // 新增：导入限制设置字段
         add_settings_field(
             'import_limit',
             __('Import Limit', 'rss-news-importer'),
             array($this, 'import_limit_cb'),
+            $this->plugin_name,
+            'rss_news_importer_general'
+        );
+
+        add_settings_field(
+            'content_exclusions',
+            __('Content Exclusions', 'rss-news-importer'),
+            array($this, 'content_exclusions_cb'),
             $this->plugin_name,
             'rss_news_importer_general'
         );
@@ -218,7 +222,6 @@ class RSS_News_Importer_Admin
         <?php
     }
 
-    // 新增：导入限制回调函数
     public function import_limit_cb()
     {
         $options = get_option($this->option_name);
@@ -226,6 +229,16 @@ class RSS_News_Importer_Admin
         ?>
         <input type="number" name="<?php echo $this->option_name; ?>[import_limit]" value="<?php echo esc_attr($import_limit); ?>" min="1" max="100">
         <p class="description"><?php _e('Limit the number of posts to import per feed.', 'rss-news-importer'); ?></p>
+        <?php
+    }
+
+    public function content_exclusions_cb()
+    {
+        $options = get_option($this->option_name);
+        $exclusions = isset($options['content_exclusions']) ? $options['content_exclusions'] : '';
+        ?>
+        <textarea name="<?php echo $this->option_name; ?>[content_exclusions]" rows="4" cols="50"><?php echo esc_textarea($exclusions); ?></textarea>
+        <p class="description"><?php _e('Enter CSS selectors or text patterns to exclude, one per line.', 'rss-news-importer'); ?></p>
         <?php
     }
 
@@ -238,8 +251,8 @@ class RSS_News_Importer_Admin
         $valid['import_author'] = isset($input['import_author']) ? absint($input['import_author']) : get_current_user_id();
         $valid['thumb_size'] = isset($input['thumb_size']) ? sanitize_text_field($input['thumb_size']) : 'thumbnail';
         $valid['force_thumb'] = isset($input['force_thumb']) ? 1 : 0;
-        // 新增：验证导入限制选项
         $valid['import_limit'] = isset($input['import_limit']) ? intval($input['import_limit']) : 10;
+        $valid['content_exclusions'] = isset($input['content_exclusions']) ? sanitize_textarea_field($input['content_exclusions']) : '';
         return $valid;
     }
 
@@ -324,67 +337,65 @@ class RSS_News_Importer_Admin
         wp_send_json_success(__('Feed removed successfully', 'rss-news-importer'));
     }
 
-// 新增：查看日志的 AJAX 处理函数
-public function view_logs_ajax()
-{
-    check_ajax_referer('rss_news_importer_nonce', 'security');
+    public function view_logs_ajax()
+    {
+        check_ajax_referer('rss_news_importer_nonce', 'security');
 
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error(__('Unauthorized user', 'rss-news-importer'));
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized user', 'rss-news-importer'));
+        }
+
+        $logger = new RSS_News_Importer_Logger();
+        $logs = $logger->get_logs();
+
+        $log_html = '<table class="wp-list-table widefat fixed striped">';
+        $log_html .= '<thead><tr><th>' . __('Date', 'rss-news-importer') . '</th><th>' . __('Message', 'rss-news-importer') . '</th><th>' . __('Type', 'rss-news-importer') . '</th></tr></thead><tbody>';
+
+        foreach ($logs as $log) {
+            $log_html .= '<tr>';
+            $log_html .= '<td>' . esc_html($log['date']) . '</td>';
+            $log_html .= '<td>' . esc_html($log['message']) . '</td>';
+            $log_html .= '<td>' . esc_html($log['type']) . '</td>';
+            $log_html .= '</tr>';
+        }
+
+        $log_html .= '</tbody></table>';
+
+        wp_send_json_success($log_html);
     }
 
-    $logger = new RSS_News_Importer_Logger();
-    $logs = $logger->get_logs();
+    public function preview_feed_ajax()
+    {
+        check_ajax_referer('rss_news_importer_nonce', 'security');
 
-    $log_html = '<table class="wp-list-table widefat fixed striped">';
-    $log_html .= '<thead><tr><th>' . __('Date', 'rss-news-importer') . '</th><th>' . __('Message', 'rss-news-importer') . '</th><th>' . __('Type', 'rss-news-importer') . '</th></tr></thead><tbody>';
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized user', 'rss-news-importer'));
+        }
 
-    foreach ($logs as $log) {
-        $log_html .= '<tr>';
-        $log_html .= '<td>' . esc_html($log['date']) . '</td>';
-        $log_html .= '<td>' . esc_html($log['message']) . '</td>';
-        $log_html .= '<td>' . esc_html($log['type']) . '</td>';
-        $log_html .= '</tr>';
+        $feed_url = isset($_POST['feed_url']) ? esc_url_raw($_POST['feed_url']) : '';
+
+        if (empty($feed_url)) {
+            wp_send_json_error(__('Invalid feed URL', 'rss-news-importer'));
+        }
+
+        $rss = fetch_feed($feed_url);
+
+        if (is_wp_error($rss)) {
+            wp_send_json_error(__('Error fetching feed', 'rss-news-importer'));
+        }
+
+        $maxitems = $rss->get_item_quantity(5);
+        $rss_items = $rss->get_items(0, $maxitems);
+
+        $preview_html = '<ul>';
+        foreach ($rss_items as $item) {
+            $preview_html .= '<li>';
+            $preview_html .= '<h3>' . esc_html($item->get_title()) . '</h3>';
+            $preview_html .= '<p>' . wp_trim_words($item->get_description(), 55, '...') . '</p>';
+            $preview_html .= '</li>';
+        }
+        $preview_html .= '</ul>';
+
+        wp_send_json_success($preview_html);
     }
-
-    $log_html .= '</tbody></table>';
-
-    wp_send_json_success($log_html);
-}
-
-// 新增：预览文章的 AJAX 处理函数
-public function preview_feed_ajax()
-{
-    check_ajax_referer('rss_news_importer_nonce', 'security');
-
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error(__('Unauthorized user', 'rss-news-importer'));
-    }
-
-    $feed_url = isset($_POST['feed_url']) ? esc_url_raw($_POST['feed_url']) : '';
-
-    if (empty($feed_url)) {
-        wp_send_json_error(__('Invalid feed URL', 'rss-news-importer'));
-    }
-
-    $rss = fetch_feed($feed_url);
-
-    if (is_wp_error($rss)) {
-        wp_send_json_error(__('Error fetching feed', 'rss-news-importer'));
-    }
-
-    $maxitems = $rss->get_item_quantity(5);
-    $rss_items = $rss->get_items(0, $maxitems);
-
-    $preview_html = '<ul>';
-    foreach ($rss_items as $item) {
-        $preview_html .= '<li>';
-        $preview_html .= '<h3>' . esc_html($item->get_title()) . '</h3>';
-        $preview_html .= '<p>' . wp_trim_words($item->get_description(), 55, '...') . '</p>';
-        $preview_html .= '</li>';
-    }
-    $preview_html .= '</ul>';
-
-    wp_send_json_success($preview_html);
-}
 }

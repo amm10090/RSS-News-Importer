@@ -2,10 +2,15 @@
 
 class RSS_News_Importer_Parser {
     public function fetch_feed($url) {
-        $response = wp_safe_remote_get($url);
+        $response = wp_safe_remote_get($url, array(
+            'timeout' => 60,
+            'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+        ));
+
         if (is_wp_error($response)) {
             return false;
         }
+
         $body = wp_remote_retrieve_body($response);
         return $this->parse_feed($body);
     }
@@ -24,18 +29,14 @@ class RSS_News_Importer_Parser {
             $parsed_item = array(
                 'title' => (string)($item->title ?? ''),
                 'link' => (string)($item->link ?? ''),
+                'guid' => (string)($item->guid ?? ''),
                 'description' => (string)($item->description ?? ''),
                 'pubDate' => (string)($item->pubDate ?? ''),
-                'author' => (string)($item->author ?? ''),
+                'author' => (string)($item->author ?? $item->children('dc', true)->creator ?? ''),
                 'categories' => $this->get_categories($item),
                 'thumbnail' => $this->get_thumbnail_url($item),
+                'content' => (string)($item->children('content', true)->encoded ?? ''),
             );
-    
-            // 尝试获取内容:encoded字段（一些RSS feed使用这个字段来存储完整内容）
-            $content = $item->children('content', true);
-            if (isset($content->encoded)) {
-                $parsed_item['content'] = (string)$content->encoded;
-            }
     
             $items[] = $parsed_item;
         }
