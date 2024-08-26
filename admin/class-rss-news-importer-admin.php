@@ -28,29 +28,76 @@ class RSS_News_Importer_Admin {
     }
 
     public function add_plugin_admin_menu() {
-        add_options_page(
-            __('RSS News Importer Settings', 'rss-news-importer'),
+        // 添加主菜单项
+        add_menu_page(
+            __('RSS News Importer', 'rss-news-importer'),
             __('RSS News Importer', 'rss-news-importer'),
             'manage_options',
             $this->plugin_name,
+            array($this, 'display_plugin_dashboard_page'),
+            'dashicons-rss',
+            100
+        );
+    
+        // 添加仪表盘子菜单
+        add_submenu_page(
+            $this->plugin_name,
+            __('Dashboard', 'rss-news-importer'),
+            __('Dashboard', 'rss-news-importer'),
+            'manage_options',
+            $this->plugin_name,
+            array($this, 'display_plugin_dashboard_page')
+        );
+    
+        // 添加设置子菜单
+        add_submenu_page(
+            $this->plugin_name,
+            __('Settings', 'rss-news-importer'),
+            __('Settings', 'rss-news-importer'),
+            'manage_options',
+            $this->plugin_name . '_settings',
             array($this, 'display_plugin_setup_page')
         );
     }
 
+    public function display_plugin_dashboard_page() {
+        // 确保用户有权限
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        
+        // 包含仪表盘显示文件
+        include_once plugin_dir_path(dirname(__FILE__)) . 'admin/partials/rss-news-importer-admin-dashboard.php';
+    }
+    
     public function display_plugin_setup_page() {
-        include_once 'partials/rss-news-importer-admin-display.php';
+        // 确保用户有权限
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        
+        // 如果设置已更新,显示成功消息
+        if (isset($_GET['settings-updated'])) {
+            add_settings_error('rss_news_importer_messages', 'rss_news_importer_message', __('Settings Saved', 'rss-news-importer'), 'updated');
+        }
+        
+        // 显示设置错误/更新消息
+        settings_errors('rss_news_importer_messages');
+        
+        // 包含设置页面显示文件
+        include_once plugin_dir_path(dirname(__FILE__)) . 'admin/partials/rss-news-importer-admin-settings.php';
     }
 
     public function register_settings() {
-        register_setting($this->option_name, $this->option_name, array($this, 'validate_options'));
-
+        register_setting($this->plugin_name, $this->option_name, array($this, 'validate_options'));
+    
         add_settings_section(
             'rss_news_importer_general',
             __('General Settings', 'rss-news-importer'),
             array($this, 'rss_news_importer_general_cb'),
             $this->plugin_name
         );
-
+    
         add_settings_field(
             'rss_feeds',
             __('RSS Feeds', 'rss-news-importer'),
@@ -58,7 +105,7 @@ class RSS_News_Importer_Admin {
             $this->plugin_name,
             'rss_news_importer_general'
         );
-
+    
         add_settings_field(
             'update_frequency',
             __('Update Frequency', 'rss-news-importer'),
@@ -66,7 +113,7 @@ class RSS_News_Importer_Admin {
             $this->plugin_name,
             'rss_news_importer_general'
         );
-
+    
         add_settings_field(
             'post_status',
             __('Default Post Status', 'rss-news-importer'),

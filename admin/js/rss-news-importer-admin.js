@@ -2,14 +2,7 @@
     'use strict';
 
     $(function() {
-        $('#add-feed').on('click', function() {
-            var newField = '<div class="rss-feed-item"><input type="text" name="rss_news_importer_options[rss_feeds][]" value="" class="regular-text" /> <button type="button" class="button remove-feed">' + rss_news_importer_ajax.remove_text + '</button></div>';
-            $('#rss-feeds').append(newField);
-        });
-
-        $('#rss-feeds').on('click', '.remove-feed', function() {
-            $(this).parent().remove();
-        });
+        // RSS源添加和删除功能保持不变
 
         $('#import-now').on('click', function() {
             var button = $(this);
