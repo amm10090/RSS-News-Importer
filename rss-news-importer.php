@@ -82,8 +82,6 @@ function run_rss_news_importer() {
         add_action('admin_enqueue_scripts', array($plugin_admin, 'enqueue_scripts'));
         
         // 其他管理页面相关的钩子
-        add_action('admin_menu', array($plugin_admin, 'add_plugin_admin_menu'));
-        add_action('admin_init', array($plugin_admin, 'register_settings'));
         add_action('wp_ajax_rss_news_importer_import_now', array($plugin_admin, 'import_now_ajax'));
 
         // 注册激活、停用和卸载钩子

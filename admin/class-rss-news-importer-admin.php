@@ -13,6 +13,8 @@ class RSS_News_Importer_Admin {
     public function __construct($plugin_name, $version) {
         $this->plugin_name = $plugin_name;
         $this->version = $version;
+        add_action('admin_menu', array($this, 'add_plugin_admin_menu'));
+        add_action('admin_init', array($this, 'register_settings'));
     }
 
     public function enqueue_styles() {
