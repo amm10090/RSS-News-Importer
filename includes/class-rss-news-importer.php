@@ -91,7 +91,6 @@ class RSS_News_Importer {
     }
 
     public static function uninstall() {
-        // 清理插件相关的数据和选项
         delete_option('rss_news_importer_options');
         // 可以在这里添加其他清理操作
     }
