@@ -18,6 +18,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: 设置 Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'  # 使用 Node.js 16 版本
+
       - name: 设置项目信息
         id: project_info
         run: |
@@ -25,23 +30,41 @@ jobs:
           echo "PROJECT_NAME=RSS News Importer" >> $GITHUB_OUTPUT
           echo "PROJECT_PATH=${{ github.workspace }}" >> $GITHUB_OUTPUT
 
+      - name: 显示当前目录结构
+        run: |
+          echo "当前目录结构:"
+          ls -R
+
       - name: 创建ZIP文件
         id: create_zip
         run: |
-          if [ -d "${{ steps.project_info.outputs.PROJECT_PATH }}" ]; then
-            echo "已找到项目目录：${{ steps.project_info.outputs.PROJECT_PATH }}"
-            TEMP_DIR="${{ steps.project_info.outputs.PROJECT_NAME }}"
+          echo "当前目录结构："
+          ls -R
+          
+          # 获取当前目录名
+          CURRENT_DIR=$(basename "$PWD")
+          
+          if [ "$CURRENT_DIR" = "RSS News Importer" ]; then
+            # 如果当前已经在正确的目录中
+            cd ..
+            ZIP_FILE="${{ steps.project_info.outputs.RELEASE_VERSION }}.RSS-News-Importer.zip"
+            zip -r "$ZIP_FILE" "RSS News Importer" -x '*.git*' '.github/*'
+          else
+            # 如果需要创建新目录
+            TEMP_DIR="RSS News Importer"
             mkdir -p "$TEMP_DIR"
-            cp -R "${{ steps.project_info.outputs.PROJECT_PATH }}"/* "$TEMP_DIR"
-            ZIP_FILE="${{ steps.project_info.outputs.RELEASE_VERSION }}.${{ steps.project_info.outputs.PROJECT_NAME }}.zip"
+            cp -R ./* "$TEMP_DIR" || true
+            cp -R ./.* "$TEMP_DIR" || true
+            ZIP_FILE="${{ steps.project_info.outputs.RELEASE_VERSION }}.RSS-News-Importer.zip"
             zip -r "$ZIP_FILE" "$TEMP_DIR" -x '*.git*' '.github/*'
             rm -rf "$TEMP_DIR"
-            echo "项目文件已成功压缩为 $ZIP_FILE"
-            echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_OUTPUT
-          else
-            echo "错误：未找到项目目录"
-            exit 1
           fi
+          
+          echo "项目文件已成功压缩为 $ZIP_FILE"
+          echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_OUTPUT
+
+          # 显示 ZIP 文件内容
+          unzip -l "$ZIP_FILE"
 
       - name: 检查ZIP文件
         run: |
