@@ -39,6 +39,79 @@
     border-radius: 4px;
 }
 
+/* 新添加的样式 */
+.hidden {
+    display: none;
+}
+
+#import-progress {
+    margin-top: 10px;
+}
+
+.progress-bar {
+    width: 0%;
+    height: 20px;
+    background-color: #4CAF50;
+    text-align: center;
+    line-height: 20px;
+    color: white;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+#log-container {
+    margin-top: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 100000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 600px;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+    text-decoration: none;
+}
+
+#preview-content {
+    margin-top: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
 /* 响应式设计 */
 @media screen and (max-width: 782px) {
     .rss-news-importer-container {
@@ -54,5 +127,10 @@
         margin-right: 0;
         margin-bottom: 10px;
         width: 100%;
+    }
+
+    .modal-content {
+        width: 95%;
+        margin: 5% auto;
     }
 }

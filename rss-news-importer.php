@@ -11,7 +11,7 @@
  * Plugin Name:       RSS News Importer
  * Plugin URI:        https://blog.amoze.cc/rss-news-importer
  * Description:       Import news articles from RSS feeds into WordPress posts.
- * Version:           1.2.4
+ * Version:           1.2.5
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            HuaYangTian
@@ -26,8 +26,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// 定义插件常量
-define('RSS_NEWS_IMPORTER_VERSION', '1.2.4');
+// 定义插件常
+define('RSS_NEWS_IMPORTER_VERSION', '1.2.5');
 define('RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -74,16 +74,27 @@ function run_rss_news_importer() {
         return;
     }
 
+    // 加载文本域支持多语言
+    load_plugin_textdomain('rss-news-importer', false, dirname(plugin_basename(__FILE__)) . '/languages/');
+
     if (class_exists('RSS_News_Importer')) {
         $plugin = new RSS_News_Importer();
         $plugin_admin = new RSS_News_Importer_Admin($plugin->get_plugin_name(), $plugin->get_version());
     
+        // 注册管理菜单
+        add_action('admin_menu', array($plugin_admin, 'add_plugin_admin_menu'));
+        
+        // 注册设置
+        add_action('admin_init', array($plugin_admin, 'register_settings'));
+
         // 注册样式和脚本加载函数
         add_action('admin_enqueue_scripts', array($plugin_admin, 'enqueue_styles'));
         add_action('admin_enqueue_scripts', array($plugin_admin, 'enqueue_scripts'));
         
-        // 其他管理页面相关的钩子
+        // AJAX 处理
         add_action('wp_ajax_rss_news_importer_import_now', array($plugin_admin, 'import_now_ajax'));
+        add_action('wp_ajax_rss_news_importer_add_feed', array($plugin_admin, 'add_feed_ajax'));
+        add_action('wp_ajax_rss_news_importer_remove_feed', array($plugin_admin, 'remove_feed_ajax'));
 
         // 注册激活、停用和卸载钩子
         register_activation_hook(__FILE__, array($plugin, 'activate'));
@@ -93,7 +104,6 @@ function run_rss_news_importer() {
         // 注册定时任务钩子
         add_action('rss_news_importer_cron_hook', array($plugin, 'run_importer'));
 
-        
         // 添加导入日志页面
         add_action('admin_menu', function() use ($plugin_admin) {
             add_submenu_page(
