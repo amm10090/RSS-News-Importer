@@ -1,6 +1,7 @@
 <?php
 
 class RSS_News_Importer_Admin {
+
     private $plugin_name;
     private $version;
     private $option_name = 'rss_news_importer_options';
@@ -10,12 +11,26 @@ class RSS_News_Importer_Admin {
         $this->version = $version;
     }
 
+    /**
+     * Register the stylesheets for the admin area.
+     */
+    public function enqueue_styles() {
+        wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/rss-news-importer-admin.css', array(), $this->version, 'all');
+    }
+
+    /**
+     * Register the JavaScript for the admin area.
+     */
+    public function enqueue_scripts() {
+        wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/rss-news-importer-admin.js', array('jquery'), $this->version, false);
+    }
+
     public function add_plugin_admin_menu() {
         add_options_page(
-            'RSS News Importer Settings',
-            'RSS News Importer',
-            'manage_options',
-            $this->plugin_name,
+            'RSS News Importer Settings', 
+            'RSS News Importer', 
+            'manage_options', 
+            $this->plugin_name, 
             array($this, 'display_plugin_setup_page')
         );
     }
@@ -49,15 +64,12 @@ class RSS_News_Importer_Admin {
             $this->plugin_name,
             'rss_news_importer_general'
         );
-
-        // 添加更多设置字段...
     }
 
     public function validate_options($input) {
         $valid = array();
         $valid['rss_feeds'] = isset($input['rss_feeds']) ? $this->sanitize_rss_feeds($input['rss_feeds']) : array();
         $valid['update_frequency'] = isset($input['update_frequency']) ? sanitize_text_field($input['update_frequency']) : 'hourly';
-        // 验证更多选项...
         return $valid;
     }
 
