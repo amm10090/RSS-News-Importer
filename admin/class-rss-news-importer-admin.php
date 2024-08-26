@@ -45,7 +45,6 @@ class RSS_News_Importer_Admin {
         add_submenu_page(
             $this->plugin_name,
             __('Dashboard', 'rss-news-importer'),
-            __('Dashboard', 'rss-news-importer'),
             'manage_options',
             $this->plugin_name,
             array($this, 'display_plugin_dashboard_page')
@@ -54,7 +53,6 @@ class RSS_News_Importer_Admin {
         // 添加设置子菜单
         add_submenu_page(
             $this->plugin_name,
-            __('Settings', 'rss-news-importer'),
             __('Settings', 'rss-news-importer'),
             'manage_options',
             $this->plugin_name . '_settings',

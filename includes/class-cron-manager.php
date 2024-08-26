@@ -32,4 +32,26 @@ class RSS_News_Importer_Cron_Manager {
             wp_unschedule_event($timestamp, 'rss_news_importer_cron_hook');
         }
     }
+    public function activate() {
+        if (!wp_next_scheduled('rss_news_importer_cron_hook')) {
+            wp_schedule_event(time(), 'hourly', 'rss_news_importer_cron_hook');
+        }
+    }
+
+    public function deactivate() {
+        $timestamp = wp_next_scheduled('rss_news_importer_cron_hook');
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, 'rss_news_importer_cron_hook');
+        }
+    }
+
+    public function run_importer() {
+        $options = get_option('rss_news_importer_options');
+        $feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
+        $importer = new RSS_News_Importer_Post_Importer();
+        
+        foreach ($feeds as $feed) {
+            $importer->import_feed($feed);
+        }
+    }
 }

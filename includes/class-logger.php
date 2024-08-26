@@ -10,8 +10,7 @@
  * @subpackage RSS_News_Importer/includes
  */
 
-class RSS_News_Importer_Logger {
-
+ class RSS_News_Importer_Logger {
     private $log_file;
 
     public function __construct() {

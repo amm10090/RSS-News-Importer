@@ -2,7 +2,7 @@
 
 class RSS_News_Importer_Parser {
     public function fetch_feed($url) {
-        $response = wp_remote_get($url);
+        $response = wp_safe_remote_get($url);
         if (is_wp_error($response)) {
             return false;
         }
@@ -11,7 +11,12 @@ class RSS_News_Importer_Parser {
     }
 
     private function parse_feed($content) {
-        $feed = new SimpleXMLElement($content);
+        libxml_use_internal_errors(true);
+        $feed = simplexml_load_string($content);
+        if (!$feed) {
+            return false;
+        }
+
         $items = array();
         foreach ($feed->channel->item as $item) {
             $items[] = array(
@@ -19,10 +24,20 @@ class RSS_News_Importer_Parser {
                 'link' => (string)$item->link,
                 'description' => (string)$item->description,
                 'pubDate' => (string)$item->pubDate,
+                'author' => (string)$item->author,
+                'categories' => $this->get_categories($item),
                 'thumbnail' => $this->get_thumbnail_url($item),
             );
         }
         return $items;
+    }
+
+    private function get_categories($item) {
+        $categories = array();
+        foreach ($item->category as $category) {
+            $categories[] = (string)$category;
+        }
+        return $categories;
     }
 
     private function get_thumbnail_url($item) {
