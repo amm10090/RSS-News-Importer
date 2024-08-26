@@ -18,40 +18,39 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 设置环境变量
+      - name: 设置项目信息
+        id: project_info
         run: |
-          echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          echo "PROJECT_NAME=RSS News Importer" >> $GITHUB_ENV
-        # 设置版本号和项目名称
-
-      - name: 显示当前目录结构
-        run: |
-          echo "当前目录结构:"
-          ls -R
-        # 用于调试，显示当前的文件结构
-
-      - name: 创建正确的目录结构
-        run: |
-          mkdir -p "${{ env.PROJECT_NAME }}"
-          mv * "${{ env.PROJECT_NAME }}/" || true
-          mv .* "${{ env.PROJECT_NAME }}/" || true
-          mv "${{ env.PROJECT_NAME }}/.git" . || true
-          mv "${{ env.PROJECT_NAME }}/.github" . || true
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "PROJECT_NAME=RSS News Importer" >> $GITHUB_OUTPUT
+          echo "PROJECT_PATH=${{ github.workspace }}" >> $GITHUB_OUTPUT
 
       - name: 创建ZIP文件
+        id: create_zip
         run: |
-          zip -r "${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}.zip" "${{ env.PROJECT_NAME }}" -x '*.git*' '.github/*'
-          echo "ZIP_FILE=${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}.zip" >> $GITHUB_ENV
-        # 创建包含项目文件的ZIP包，排除git和GitHub相关文件
+          if [ -d "${{ steps.project_info.outputs.PROJECT_PATH }}" ]; then
+            echo "已找到项目目录：${{ steps.project_info.outputs.PROJECT_PATH }}"
+            TEMP_DIR="${{ steps.project_info.outputs.PROJECT_NAME }}"
+            mkdir -p "$TEMP_DIR"
+            cp -R "${{ steps.project_info.outputs.PROJECT_PATH }}"/* "$TEMP_DIR"
+            ZIP_FILE="${{ steps.project_info.outputs.RELEASE_VERSION }}.${{ steps.project_info.outputs.PROJECT_NAME }}.zip"
+            zip -r "$ZIP_FILE" "$TEMP_DIR" -x '*.git*' '.github/*'
+            rm -rf "$TEMP_DIR"
+            echo "项目文件已成功压缩为 $ZIP_FILE"
+            echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_OUTPUT
+          else
+            echo "错误：未找到项目目录"
+            exit 1
+          fi
 
       - name: 检查ZIP文件
         run: |
-          if [ ! -f "${{ env.ZIP_FILE }}" ]; then
+          if [ ! -f "${{ steps.create_zip.outputs.ZIP_FILE }}" ]; then
             echo "错误：ZIP文件未创建"
             exit 1
           fi
-          echo "ZIP文件创建成功：${{ env.ZIP_FILE }}"
-        # 验证ZIP文件是否成功创建
+          echo "ZIP文件创建成功：${{ steps.create_zip.outputs.ZIP_FILE }}"
+          ls -l "${{ steps.create_zip.outputs.ZIP_FILE }}"
 
       - name: 获取最近提交
         run: |
@@ -59,29 +58,29 @@ jobs:
           echo "RECENT_COMMITS<<EOF" >> $GITHUB_ENV
           echo "$COMMITS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-        # 获取自上次标签以来的所有提交信息
 
       - name: 生成发布说明
         run: |
-          echo "${{ env.PROJECT_NAME }} v${{ env.RELEASE_VERSION }} 发布说明" > release_notes.md
+          echo "${{ steps.project_info.outputs.PROJECT_NAME }} ${{ steps.project_info.outputs.RELEASE_VERSION }} 发布说明" > release_notes.md
           echo "" >> release_notes.md
           echo "最近更改:" >> release_notes.md
           echo "${{ env.RECENT_COMMITS }}" >> release_notes.md
-        # 生成包含最近提交信息的发布说明
 
       - name: 创建发布
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ env.RELEASE_VERSION }} \
-            --title "${{ env.PROJECT_NAME }} ${{ env.RELEASE_VERSION }}" \
+          if [ ! -f "${{ steps.create_zip.outputs.ZIP_FILE }}" ]; then
+            echo "错误：ZIP文件不存在"
+            exit 1
+          fi
+          gh release create ${{ steps.project_info.outputs.RELEASE_VERSION }} \
+            --title "${{ steps.project_info.outputs.PROJECT_NAME }} ${{ steps.project_info.outputs.RELEASE_VERSION }}" \
             --notes-file release_notes.md \
-            ${{ env.ZIP_FILE }}
-        # 使用GitHub CLI创建新的发布
+            "${{ steps.create_zip.outputs.ZIP_FILE }}"
 
       - name: 清理
         if: always()
         run: |
-          rm -f ${{ env.ZIP_FILE }}
+          rm -f "${{ steps.create_zip.outputs.ZIP_FILE }}"
           rm -f release_notes.md
-        # 清理临时文件，无论前面的步骤是否成功
