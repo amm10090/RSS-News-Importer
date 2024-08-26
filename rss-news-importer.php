@@ -1,6 +1,4 @@
 <?php
-use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
-
 /**
  * RSS News Importer
  *
@@ -21,81 +19,72 @@ use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
  * Text Domain:       rss-news-importer
  * License:           GPL v2 or later
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
- * Update URI:        https://github.com/amm10090/RSS-News-Importer
  */
 
-// 如果直接访问此文件，则中止执行。
+// If this file is called directly, abort.
 if ( ! defined( 'WPINC' ) ) {
     die;
 }
 
-// 定义插件常量。
+// Define plugin constants
 define( 'RSS_NEWS_IMPORTER_VERSION', '1.0.4' );
 define( 'RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 /**
- * 在插件激活时执行的代码。
- *
- * @since 1.0.0
- */
-function activate_rss_news_importer() {
-    // 激活代码在此处。
-}
-
-/**
- * 在插件停用时执行的代码。
- *
- * @since 1.0.0
- */
-function deactivate_rss_news_importer() {
-    // 停用代码在此处。
-}
-
-register_activation_hook( __FILE__, 'activate_rss_news_importer' );
-register_deactivation_hook( __FILE__, 'deactivate_rss_news_importer' );
-
-/**
- * 包含插件的核心类文件。
- */
-require plugin_dir_path( __FILE__ ) . 'includes/class-rss-news-importer.php';
-
-/**
- * 设置插件更新检查器。
- *
- * @since 1.0.0
+ * Setup plugin updater
  */
 function setup_rss_news_importer_updater() {
-    // 确保 Plugin Update Checker 库存在
-    if ( file_exists( plugin_dir_path( __FILE__ ) . 'plugin-update-checker/plugin-update-checker.php' ) ) {
-        require_once plugin_dir_path( __FILE__ ) . 'plugin-update-checker/plugin-update-checker.php';
+    if ( file_exists( __DIR__ . '/plugin-update-checker/plugin-update-checker.php' ) ) {
+        require_once __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
+        
+        use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
         $myUpdateChecker = PucFactory::buildUpdateChecker(
-            'https://github.com/amm10090/RSS-News-Importer/',
+            'https://github.com/amm10090/RSS-News-Importer',
             __FILE__,
-            'rss-news-importer'
+            'RSS News Importer'
         );
 
-        // 设置包含稳定版本的分支
+        // Set the branch that contains the stable release.
         $myUpdateChecker->setBranch('main');
 
-        // 启用发布资产
+        // Enable release assets
         $myUpdateChecker->getVcsApi()->enableReleaseAssets();
-
     }
 }
 
-/**
- * 开始执行插件。
- *
- * @since 1.0.0
- */
-function run_rss_news_importer() {
-    $plugin = new RSS_News_Importer();
-    $plugin->run();
+// Initialize plugin updater
+add_action( 'plugins_loaded', 'setup_rss_news_importer_updater' );
 
-    // 设置更新检查器
-    setup_rss_news_importer_updater();
+/**
+ * The core plugin class that is used to define internationalization,
+ * admin-specific hooks, and public-facing site hooks.
+ */
+$class_file = plugin_dir_path( __FILE__ ) . 'includes/class-rss-news-importer.php';
+if ( file_exists( $class_file ) ) {
+    require_once $class_file;
+} else {
+    add_action( 'admin_notices', function() {
+        echo '<div class="error"><p>RSS News Importer Error: Core class file not found.</p></div>';
+    });
+    return; // Stop execution if the file is not found
 }
 
-run_rss_news_importer();
+/**
+ * Begins execution of the plugin.
+ */
+/**
+ * function run_rss_news_importer() {
+   * if ( class_exists( 'RSS_News_Importer' ) ) {
+   *     $plugin = new RSS_News_Importer();
+   *     $plugin->run();
+   * } else {
+   *     add_action( 'admin_notices', function() {
+  *          echo '<div class="error"><p>RSS News Importer Error: Core class not found.</p></div>';
+   *     });
+   * }
+*}
+*/    
+// Initialize plugin
+add_action( 'plugins_loaded', 'run_rss_news_importer' );
