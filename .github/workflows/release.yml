@@ -1,4 +1,4 @@
-name: Create Release
+name: 创建发布
 
 on:
   push:
@@ -8,52 +8,60 @@ on:
 
 jobs:
   build:
-    name: Create Release
+    name: 创建发布
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 添加写入权限
     steps:
-      - name: Checkout code
+      - name: 检出代码
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
-      - name: Set up environment
+      - name: 设置环境变量
         run: |
           echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
           echo "PROJECT_NAME=$(basename ${{ github.repository }})" >> $GITHUB_ENV
+        # 设置版本号和项目名称
 
-      - name: Display current directory structure
+      - name: 显示当前目录结构
         run: |
-          echo "Current directory structure:"
+          echo "当前目录结构:"
           ls -R
+        # 用于调试，显示当前的文件结构
 
-      - name: Create ZIP file
+      - name: 创建ZIP文件
         run: |
           zip -r ${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}.zip . -x '*.git*' '.github/*'
           echo "ZIP_FILE=${{ env.PROJECT_NAME }}-${{ env.RELEASE_VERSION }}.zip" >> $GITHUB_ENV
+        # 创建包含项目文件的ZIP包，排除git和GitHub相关文件
 
-      - name: Check ZIP file
+      - name: 检查ZIP文件
         run: |
           if [ ! -f "${{ env.ZIP_FILE }}" ]; then
-            echo "Error: ZIP file not created"
+            echo "错误：ZIP文件未创建"
             exit 1
           fi
-          echo "ZIP file created successfully: ${{ env.ZIP_FILE }}"
+          echo "ZIP文件创建成功：${{ env.ZIP_FILE }}"
+        # 验证ZIP文件是否成功创建
 
-      - name: Get recent commits
+      - name: 获取最近提交
         run: |
-          COMMITS=$(git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 @^)..@)
+          COMMITS=$(git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 @^)..@ | sed 's/^/  /')
           echo "RECENT_COMMITS<<EOF" >> $GITHUB_ENV
           echo "$COMMITS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
+        # 获取自上次标签以来的所有提交信息
 
-      - name: Generate release notes
+      - name: 生成发布说明
         run: |
-          echo "Release Notes for ${{ env.PROJECT_NAME }} v${{ env.RELEASE_VERSION }}" > release_notes.md
+          echo "${{ env.PROJECT_NAME }} v${{ env.RELEASE_VERSION }} 发布说明" > release_notes.md
           echo "" >> release_notes.md
-          echo "Recent changes:" >> release_notes.md
+          echo "最近更改:" >> release_notes.md
           echo "${{ env.RECENT_COMMITS }}" >> release_notes.md
+        # 生成包含最近提交信息的发布说明
 
-      - name: Create Release
+      - name: 创建发布
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -61,9 +69,11 @@ jobs:
             --title "${{ env.PROJECT_NAME }} ${{ env.RELEASE_VERSION }}" \
             --notes-file release_notes.md \
             ${{ env.ZIP_FILE }}
+        # 使用GitHub CLI创建新的发布
 
-      - name: Clean up
+      - name: 清理
         if: always()
         run: |
           rm -f ${{ env.ZIP_FILE }}
           rm -f release_notes.md
+        # 清理临时文件，无论前面的步骤是否成功
