@@ -33,6 +33,12 @@ msgstr "导入选项"
 msgid "Thumbnail Settings"
 msgstr "缩略图设置"
 
+msgid "Import Limit"
+msgstr "导入限制"
+
+msgid "Content Exclusions"
+msgstr "内容排除"
+
 msgid "Save Settings"
 msgstr "保存设置"
 
@@ -69,6 +75,9 @@ msgstr "每天"
 msgid "Default Category:"
 msgstr "默认分类："
 
+msgid "Select a category"
+msgstr "选择一个分类"
+
 msgid "Default Author:"
 msgstr "默认作者："
 
@@ -77,6 +86,12 @@ msgstr "缩略图大小："
 
 msgid "Force thumbnail generation"
 msgstr "强制生成缩略图"
+
+msgid "Limit the number of posts to import per feed."
+msgstr "限制每个源导入的文章数量。"
+
+msgid "Enter CSS selectors or text patterns to exclude, one per line."
+msgstr "输入要排除的 CSS 选择器或文本模式，每行一个。"
 
 msgid "Unauthorized user"
 msgstr "未授权用户"
@@ -92,3 +107,57 @@ msgstr "源移除成功"
 
 msgid "Imported %d posts from %s"
 msgstr "从 %2$s 导入了 %1$d 篇文章"
+
+msgid "Error fetching feed"
+msgstr "获取源时出错"
+
+msgid "Preview"
+msgstr "预览"
+
+msgid "Manage RSS Feeds"
+msgstr "管理 RSS 源"
+
+msgid "Enter new feed URL"
+msgstr "输入新的源 URL"
+
+msgid "Add Feed"
+msgstr "添加源"
+
+msgid "Import Logs"
+msgstr "导入日志"
+
+msgid "Refresh Logs"
+msgstr "刷新日志"
+
+msgid "Date"
+msgstr "日期"
+
+msgid "Message"
+msgstr "消息"
+
+msgid "Type"
+msgstr "类型"
+
+msgid "Settings Saved"
+msgstr "设置已保存"
+
+msgid "Feed already exists"
+msgstr "源已存在"
+
+msgid "Feed not found"
+msgstr "未找到源"
+
+msgid "Error loading feed preview."
+msgstr "加载源预览时出错。"
+
+msgid "Error loading logs."
+msgstr "加载日志时出错。"
+
+msgid "General"
+msgstr "常规"
+
+msgid "Logs"
+msgstr "日志"
+
+msgid "Click the button below to manually import posts from all configured RSS feeds."
+msgstr "点击下面的按钮从所有配置的 RSS 源手动导入文章。"
