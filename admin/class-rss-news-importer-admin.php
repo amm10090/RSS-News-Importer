@@ -23,6 +23,10 @@ class RSS_News_Importer_Admin {
      */
     public function enqueue_scripts() {
         wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/rss-news-importer-admin.js', array('jquery'), $this->version, false);
+        wp_localize_script($this->plugin_name, 'rss_news_importer_ajax', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('rss_news_importer_nonce')
+        ));
     }
 
     public function add_plugin_admin_menu() {
@@ -36,7 +40,41 @@ class RSS_News_Importer_Admin {
     }
 
     public function display_plugin_setup_page() {
-        include_once 'partials/rss-news-importer-admin-display.php';
+        ?>
+        <div class="wrap">
+            <h2><?php echo esc_html(get_admin_page_title()); ?></h2>
+            <form action="options.php" method="post">
+                <?php
+                settings_fields($this->plugin_name);
+                do_settings_sections($this->plugin_name);
+                submit_button('Save Settings');
+                ?>
+            </form>
+            <hr>
+            <h3>Import Now</h3>
+            <p>Click the button below to manually import RSS feeds now.</p>
+            <button id="import-now" class="button button-primary">Import Now</button>
+            <div id="import-result"></div>
+        </div>
+        <?php
+    }
+    public function import_now_ajax() {
+        check_ajax_referer('rss_news_importer_nonce', 'security');
+    
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized user');
+        }
+    
+        $importer = new RSS_News_Importer_Post_Importer();
+        $result = $importer->import_all_feeds();
+    
+        if ($result) {
+            echo 'Import completed successfully.';
+        } else {
+            echo 'Import failed. Please check the error log.';
+        }
+    
+        wp_die();
     }
 
     public function register_settings() {

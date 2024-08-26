@@ -11,7 +11,7 @@
  * Plugin Name:       RSS News Importer
  * Plugin URI:        https://blog.amoze.cc/rss-news-importer
  * Description:       Import news articles from RSS feeds into WordPress posts.
- * Version:           1.1.7
+ * Version:           1.1.8
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            HuaYangTian
@@ -27,7 +27,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('RSS_NEWS_IMPORTER_VERSION', '1.1.7');
+define('RSS_NEWS_IMPORTER_VERSION', '1.1.8');
 define('RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -53,7 +53,7 @@ function run_rss_news_importer() {
         // 其他管理页面相关的钩子
         add_action('admin_menu', array($plugin_admin, 'add_plugin_admin_menu'));
         add_action('admin_init', array($plugin_admin, 'register_settings'));
-
+add_action('wp_ajax_rss_news_importer_import_now', array($plugin_admin, 'import_now_ajax'));
         // 注册激活钩子
         register_activation_hook(__FILE__, array($plugin, 'activate'));
         // 注册停用钩子
@@ -63,7 +63,8 @@ function run_rss_news_importer() {
 
         // 注册定时任务钩子
         add_action('rss_news_importer_cron_hook', array($plugin, 'run_importer'));
-
+// AJAX 动作
+add_action('wp_ajax_rss_news_importer_import_now', array($plugin_admin, 'import_now_ajax'));
         $plugin->run();
     } else {
         add_action('admin_notices', function() {
