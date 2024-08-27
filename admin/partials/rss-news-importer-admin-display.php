@@ -24,11 +24,28 @@
                 <div class="card">
                     <h2 class="title"><?php _e('Manage RSS Feeds', 'rss-news-importer'); ?></h2>
                     <div class="inside">
-                        <div id="rss-feeds-list"></div>
+                        <div id="rss-feeds-list" class="sortable-list">
+                            <?php
+                            $feeds = get_option('rss_news_importer_feeds', array());
+                            foreach ($feeds as $feed) :
+                                $feed_url = is_array($feed) ? $feed['url'] : $feed;
+                                $feed_name = is_array($feed) && isset($feed['name']) ? $feed['name'] : '';
+                            ?>
+                                <div class="feed-item" data-feed-url="<?php echo esc_attr($feed_url); ?>">
+                                    <span class="dashicons dashicons-menu handle"></span>
+                                    <input type="text" value="<?php echo esc_url($feed_url); ?>" readonly>
+                                    <input type="text" value="<?php echo esc_attr($feed_name); ?>" placeholder="<?php _e('Feed Name (optional)', 'rss-news-importer'); ?>">
+                                    <button class="button remove-feed"><?php _e('Remove', 'rss-news-importer'); ?></button>
+                                    <button class="button preview-feed"><?php _e('Preview', 'rss-news-importer'); ?></button>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                         <div class="rss-feed-actions">
                             <input type="text" id="new-feed-url" placeholder="<?php _e('Enter new feed URL', 'rss-news-importer'); ?>">
+                            <input type="text" id="new-feed-name" placeholder="<?php _e('Enter feed name (optional)', 'rss-news-importer'); ?>">
                             <button id="add-feed" class="button button-primary"><?php _e('Add Feed', 'rss-news-importer'); ?></button>
                         </div>
+                        <div id="feed-preview"></div>
                     </div>
                 </div>
             </div>

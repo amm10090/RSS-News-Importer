@@ -4,7 +4,7 @@ Donate link: https://blog.amoze.cc/donate
 Tags: rss, news, importer, feed
 Requires at least: 5.2
 Tested up to: 6.4
-Stable tag: 1.3.1
+Stable tag: 1.3.5
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -54,11 +54,17 @@ Yes, you can add as many RSS feeds as you like. Each feed can have its own impor
 No, the import process runs in the background and should not affect your website's performance.
 
 == Changelog ==
+=1.3.5 =
+1.优化日志记录,记录详细的导入过程信息
+2.增加历史导入记录功能,方便查看导入历史记录
+3.优化导入逻辑,避免重复导入相同文章
+4.优化导入逻辑,避免导入过多文章导致网站卡顿
+5.优化多rss源设置,支持同时导入多个rss源
+6.支持rss设置名称自定义
+7.验证方法改进
 
-= 1.0.0 =
-* Initial release
-=1.2.3 =
-修复后台子菜单add_submenu_page 函数接收到了一个数组而不是预期的字符串导致报错的问题。
+== Upgrade Notice ==
+
 =1.3.0 =
 1. 图片处理优化:
    - 改进图片URL处理,移除查询参数以解决文件类型无效问题
@@ -97,6 +103,7 @@ No, the import process runs in the background and should not affect your website
    - 实现更多的钩子和过滤器,便于扩展
 
 这次更新全面提升了RSS News Importer插件的性能、稳定性和功能性,为用户提供更好的RSS内容导入体验。
+
 =1.3.1 =
 RSS News Importer - 更新日志
 用户界面改进：
@@ -129,8 +136,3 @@ RSS News Importer - 更新日志
 1. 更新了代码注释，提高了代码的可读性和可维护性。
 2. 优化了错误处理和用户反馈机制。
 3. 更新了插件文档，反映了新的功能和设置选项。
-== Upgrade Notice ==
-
-= 1.0.0 =
-This is the initial release of RSS News Importer.
-

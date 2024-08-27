@@ -1,39 +1,65 @@
+console.log('JS文件已加载');
 jQuery(document).ready(function($) {
     // 选项卡切换功能
     $('.nav-tab-wrapper .nav-tab').on('click', function(e) {
         e.preventDefault();
         var target = $(this).attr('href');
         
-        // 移除所有选项卡的活动状态
         $('.nav-tab-wrapper .nav-tab').removeClass('nav-tab-active');
-        // 为当前点击的选项卡添加活动状态
         $(this).addClass('nav-tab-active');
         
-        // 隐藏所有内容面板
         $('.tab-content .tab-pane').removeClass('active');
-        // 显示当前选项卡对应的内容面板
         $(target).addClass('active');
+    });
+
+    // 拖拽排序功能
+    $('#rss-feeds-list').sortable({
+        handle: '.handle',
+        update: function(event, ui) {
+            var feedOrder = $(this).sortable('toArray', {attribute: 'data-feed-url'});
+            $.ajax({
+                url: rss_news_importer_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'rss_news_importer_update_feed_order',
+                    order: feedOrder,
+                    security: rss_news_importer_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showFeedback(response.data, 'success');
+                    } else {
+                        showFeedback(response.data, 'error');
+                    }
+                },
+                error: function() {
+                    showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
+                }
+            });
+        }
     });
 
     // 添加新的RSS源
     $('#add-feed').on('click', function() {
         var feedUrl = $('#new-feed-url').val();
+        var feedName = $('#new-feed-name').val();
         if (feedUrl) {
-            addFeed(feedUrl);
-            $('#new-feed-url').val(''); // 清空输入框
+            addFeed(feedUrl, feedName);
+            $('#new-feed-url').val('');
+            $('#new-feed-name').val('');
         }
     });
 
     // 删除RSS源
     $('#rss-feeds-list').on('click', '.remove-feed', function() {
         var feedItem = $(this).closest('.feed-item');
-        var feedUrl = feedItem.find('input[type="text"]').val();
+        var feedUrl = feedItem.data('feed-url');
         removeFeed(feedUrl, feedItem);
     });
 
     // 预览RSS源
     $('#rss-feeds-list').on('click', '.preview-feed', function() {
-        var feedUrl = $(this).data('feed-url');
+        var feedUrl = $(this).closest('.feed-item').data('feed-url');
         previewFeed(feedUrl);
     });
 
@@ -48,28 +74,32 @@ jQuery(document).ready(function($) {
     });
 
     // 添加RSS源的函数
-    function addFeed(feedUrl) {
+    function addFeed(feedUrl, feedName) {
         $.ajax({
             url: rss_news_importer_ajax.ajax_url,
             type: 'POST',
             data: {
                 action: 'rss_news_importer_add_feed',
                 feed_url: feedUrl,
+                feed_name: feedName,
                 security: rss_news_importer_ajax.nonce
             },
             success: function(response) {
                 if (response.success) {
-                    var feedItem = $('<div class="feed-item"></div>');
-                    feedItem.html('<input type="text" value="' + response.data.feed_url + '" readonly>' +
+                    var feedItem = $('<div class="feed-item" data-feed-url="' + response.data.feed_url + '"></div>');
+                    feedItem.html('<span class="dashicons dashicons-menu handle"></span>' +
+                        '<input type="text" name="' + rss_news_importer_ajax.option_name + '[rss_feeds][]" value="' + response.data.feed_url + '" readonly>' +
+                        '<input type="text" name="' + rss_news_importer_ajax.option_name + '[rss_feeds][]" value="' + (response.data.feed_name || '') + '" placeholder="Feed Name (optional)">' +
                         '<button class="button remove-feed">' + rss_news_importer_ajax.i18n.remove_text + '</button>' +
-                        '<button class="button preview-feed" data-feed-url="' + response.data.feed_url + '">预览</button>');
+                        '<button class="button preview-feed">预览</button>');
                     $('#rss-feeds-list').append(feedItem);
-                    showFeedback(response.data.message);
+                    showFeedback(response.data.message, 'success');
                 } else {
                     showFeedback(response.data, 'error');
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('AJAX error:', status, error);
                 showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
             }
         });
@@ -88,7 +118,7 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 if (response.success) {
                     feedItem.remove();
-                    showFeedback(response.data);
+                    showFeedback(response.data, 'success');
                 } else {
                     showFeedback(response.data, 'error');
                 }
@@ -179,4 +209,25 @@ jQuery(document).ready(function($) {
             });
         }, 3000);
     }
+});
+$('#rss-news-importer-form').on('submit', function(e) {
+    e.preventDefault();
+    var formData = $(this).serialize();
+    
+    // 添加调试日志
+    console.log('Form data:', formData);
+
+    $.ajax({
+        url: ajaxurl,
+        type: 'POST',
+        data: formData,
+        success: function(response) {
+            // 处理成功响应
+            console.log('Save success:', response);
+        },
+        error: function(xhr, status, error) {
+            // 处理错误
+            console.error('Save error:', error);
+        }
+    });
 });

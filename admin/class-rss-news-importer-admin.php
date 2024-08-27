@@ -9,25 +9,25 @@ class RSS_News_Importer_Admin
     private $plugin_name;
     private $version;
     private $option_name = 'rss_news_importer_options';
+    private $cron_manager;
 
-    /**
-     * 构造函数
-     * 初始化插件名称和版本,并设置必要的WordPress钩子
-     */
     public function __construct($plugin_name, $version)
     {
         $this->plugin_name = $plugin_name;
         $this->version = $version;
-
+        $this->option_name = 'rss_news_importer_options';
+        $this->cron_manager = new RSS_News_Importer_Cron_Manager($plugin_name, $version);
+    
         add_action('admin_menu', array($this, 'add_plugin_admin_menu'));
         add_action('admin_init', array($this, 'register_settings'));
         $this->register_ajax_actions();
+    
+        // Add this line to check if the option exists, if not create it
+        if (false === get_option($this->option_name)) {
+            add_option($this->option_name, array());
+        }
     }
 
-    /**
-     * 注册AJAX动作
-     * 为插件的各种功能注册AJAX处理方法
-     */
     private function register_ajax_actions()
     {
         $ajax_actions = array(
@@ -35,7 +35,8 @@ class RSS_News_Importer_Admin
             'add_feed',
             'remove_feed',
             'view_logs',
-            'preview_feed'
+            'preview_feed',
+            'update_feed_order'
         );
 
         foreach ($ajax_actions as $action) {
@@ -43,27 +44,22 @@ class RSS_News_Importer_Admin
         }
     }
 
-    /**
-     * 加载管理页面样式
-     */
-    public function enqueue_styles()
+    public function enqueue_styles($hook)
     {
-        wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/rss-news-importer-admin.css', array(), $this->version, 'all');
+        if (strpos($hook, $this->plugin_name) !== false) {
+            wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/rss-news-importer-admin.css', array(), $this->version, 'all');
+        }
     }
 
-    /**
-     * 加载管理页面脚本
-     */
-    public function enqueue_scripts()
+    public function enqueue_scripts($hook)
     {
-        wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/rss-news-importer-admin.js', array('jquery'), $this->version, false);
-        wp_localize_script($this->plugin_name, 'rss_news_importer_ajax', $this->get_ajax_data());
+        if (strpos($hook, $this->plugin_name) !== false) {
+            wp_enqueue_script('jquery-ui-sortable');
+            wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/rss-news-importer-admin.js', array('jquery', 'jquery-ui-sortable'), $this->version, false);
+            wp_localize_script($this->plugin_name, 'rss_news_importer_ajax', $this->get_ajax_data());
+        }
     }
 
-    /**
-     * 获取AJAX数据
-     * 返回用于JavaScript的AJAX相关数据
-     */
     private function get_ajax_data()
     {
         return array(
@@ -78,9 +74,6 @@ class RSS_News_Importer_Admin
         );
     }
 
-    /**
-     * 添加插件管理菜单
-     */
     public function add_plugin_admin_menu()
     {
         add_menu_page(
@@ -92,11 +85,17 @@ class RSS_News_Importer_Admin
             'dashicons-rss',
             100
         );
+
+        add_submenu_page(
+            $this->plugin_name,
+            __('RSS Feeds Dashboard', 'rss-news-importer'),
+            __('Dashboard', 'rss-news-importer'),
+            'manage_options',
+            $this->plugin_name . '-dashboard',
+            array($this, 'display_dashboard_page')
+        );
     }
 
-    /**
-     * 显示插件设置页面
-     */
     public function display_plugin_setup_page()
     {
         if (!current_user_can('manage_options')) {
@@ -107,9 +106,16 @@ class RSS_News_Importer_Admin
         include_once plugin_dir_path(dirname(__FILE__)) . 'admin/partials/rss-news-importer-admin-display.php';
     }
 
-    /**
-     * 处理设置更新
-     */
+    public function display_dashboard_page()
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        $dashboard = new RSS_News_Importer_Dashboard($this->plugin_name, $this->version);
+        $dashboard->display_dashboard();
+    }
+
     private function handle_settings_update()
     {
         if (isset($_GET['settings-updated']) && $_GET['settings-updated']) {
@@ -118,9 +124,6 @@ class RSS_News_Importer_Admin
         settings_errors('rss_news_importer_messages');
     }
 
-    /**
-     * 注册插件设置
-     */
     public function register_settings()
     {
         register_setting($this->plugin_name, $this->option_name, array($this, 'validate_options'));
@@ -128,9 +131,6 @@ class RSS_News_Importer_Admin
         $this->add_settings_fields();
     }
 
-    /**
-     * 添加设置部分
-     */
     private function add_settings_sections()
     {
         add_settings_section(
@@ -141,9 +141,6 @@ class RSS_News_Importer_Admin
         );
     }
 
-    /**
-     * 添加设置字段
-     */
     private function add_settings_fields()
     {
         $fields = array(
@@ -166,36 +163,37 @@ class RSS_News_Importer_Admin
         }
     }
 
-    /**
-     * 常规设置部分的回调函数
-     */
     public function general_settings_section_cb()
     {
         echo '<p>' . __('Configure your RSS News Importer settings here.', 'rss-news-importer') . '</p>';
     }
 
-    /**
-     * RSS源设置字段的回调函数
-     */
     public function rss_feeds_cb()
     {
         $options = get_option($this->option_name);
         $rss_feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
-        ?>
-        <div id="rss-feeds-list">
-            <?php foreach ($rss_feeds as $index => $feed) : ?>
-                <div class="feed-item">
-                    <input type="text" name="<?php echo $this->option_name; ?>[rss_feeds][]" value="<?php echo esc_url($feed); ?>" class="regular-text" />
+?>
+        <div id="rss-feeds-list" class="sortable-list">
+            <?php foreach ($rss_feeds as $index => $feed) :
+                $feed_url = is_array($feed) ? $feed['url'] : $feed;
+                $feed_name = is_array($feed) && isset($feed['name']) ? $feed['name'] : '';
+            ?>
+                <div class="feed-item" data-feed-url="<?php echo esc_attr($feed_url); ?>">
+                    <span class="dashicons dashicons-menu handle"></span>
+                    <input type="text" name="<?php echo $this->option_name; ?>[rss_feeds][<?php echo $index; ?>][url]" value="<?php echo esc_url($feed_url); ?>" class="regular-text" />
+                    <input type="text" name="<?php echo $this->option_name; ?>[rss_feeds][<?php echo $index; ?>][name]" value="<?php echo esc_attr($feed_name); ?>" placeholder="<?php _e('Feed Name (optional)', 'rss-news-importer'); ?>" class="regular-text" />
                     <button type="button" class="button remove-feed"><?php _e('Remove', 'rss-news-importer'); ?></button>
-                    <button type="button" class="button preview-feed" data-feed-url="<?php echo esc_url($feed); ?>"><?php _e('Preview', 'rss-news-importer'); ?></button>
+                    <button type="button" class="button preview-feed"><?php _e('Preview', 'rss-news-importer'); ?></button>
                 </div>
             <?php endforeach; ?>
         </div>
         <div class="feed-actions">
             <input type="text" id="new-feed-url" placeholder="<?php _e('Enter new feed URL', 'rss-news-importer'); ?>" class="regular-text">
+            <input type="text" id="new-feed-name" placeholder="<?php _e('Enter feed name (optional)', 'rss-news-importer'); ?>" class="regular-text">
             <button type="button" class="button" id="add-feed"><?php _e('Add New Feed', 'rss-news-importer'); ?></button>
         </div>
-        <?php
+        <div id="feed-preview"></div>
+    <?php
     }
 
     /**
@@ -205,13 +203,16 @@ class RSS_News_Importer_Admin
     {
         $options = get_option($this->option_name);
         $frequency = isset($options['update_frequency']) ? $options['update_frequency'] : 'hourly';
-        ?>
+    ?>
         <select name="<?php echo $this->option_name; ?>[update_frequency]">
             <option value="hourly" <?php selected($frequency, 'hourly'); ?>><?php _e('Hourly', 'rss-news-importer'); ?></option>
             <option value="twicedaily" <?php selected($frequency, 'twicedaily'); ?>><?php _e('Twice Daily', 'rss-news-importer'); ?></option>
             <option value="daily" <?php selected($frequency, 'daily'); ?>><?php _e('Daily', 'rss-news-importer'); ?></option>
+            <option value="weekly" <?php selected($frequency, 'weekly'); ?>><?php _e('Weekly', 'rss-news-importer'); ?></option>
         </select>
-        <?php
+    <?php
+        $next_run = $this->cron_manager->get_next_scheduled_time();
+        echo '<p>' . sprintf(__('Next scheduled run: %s', 'rss-news-importer'), date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $next_run)) . '</p>';
     }
 
     /**
@@ -222,7 +223,7 @@ class RSS_News_Importer_Admin
         $options = get_option($this->option_name);
         $category = isset($options['import_category']) ? $options['import_category'] : '';
         $author = isset($options['import_author']) ? $options['import_author'] : get_current_user_id();
-        ?>
+    ?>
         <p>
             <label><?php _e('Default Category:', 'rss-news-importer'); ?></label>
             <?php
@@ -244,7 +245,7 @@ class RSS_News_Importer_Admin
             ));
             ?>
         </p>
-        <?php
+    <?php
     }
 
     /**
@@ -255,7 +256,7 @@ class RSS_News_Importer_Admin
         $options = get_option($this->option_name);
         $thumb_size = isset($options['thumb_size']) ? $options['thumb_size'] : 'thumbnail';
         $force_thumb = isset($options['force_thumb']) ? $options['force_thumb'] : 0;
-        ?>
+    ?>
         <p>
             <label><?php _e('Thumbnail Size:', 'rss-news-importer'); ?></label>
             <select name="<?php echo $this->option_name; ?>[thumb_size]">
@@ -273,7 +274,7 @@ class RSS_News_Importer_Admin
                 <?php _e('Force thumbnail generation', 'rss-news-importer'); ?>
             </label>
         </p>
-        <?php
+    <?php
     }
 
     /**
@@ -283,10 +284,10 @@ class RSS_News_Importer_Admin
     {
         $options = get_option($this->option_name);
         $import_limit = isset($options['import_limit']) ? intval($options['import_limit']) : 10;
-        ?>
+    ?>
         <input type="number" name="<?php echo $this->option_name; ?>[import_limit]" value="<?php echo esc_attr($import_limit); ?>" min="1" max="100">
         <p class="description"><?php _e('Limit the number of posts to import per feed.', 'rss-news-importer'); ?></p>
-        <?php
+    <?php
     }
 
     /**
@@ -296,10 +297,10 @@ class RSS_News_Importer_Admin
     {
         $options = get_option($this->option_name);
         $exclusions = isset($options['content_exclusions']) ? $options['content_exclusions'] : '';
-        ?>
+    ?>
         <textarea name="<?php echo $this->option_name; ?>[content_exclusions]" rows="4" cols="50"><?php echo esc_textarea($exclusions); ?></textarea>
         <p class="description"><?php _e('Enter CSS selectors or text patterns to exclude, one per line.', 'rss-news-importer'); ?></p>
-        <?php
+<?php
     }
 
     /**
@@ -308,28 +309,78 @@ class RSS_News_Importer_Admin
     public function validate_options($input)
     {
         $valid = array();
-        $valid['rss_feeds'] = isset($input['rss_feeds']) ? $this->sanitize_rss_feeds($input['rss_feeds']) : array();
-        $valid['update_frequency'] = isset($input['update_frequency']) ? sanitize_text_field($input['update_frequency']) : 'hourly';
-        $valid['import_category'] = isset($input['import_category']) ? absint($input['import_category']) : 0;
-        $valid['import_author'] = isset($input['import_author']) ? absint($input['import_author']) : get_current_user_id();
-        $valid['thumb_size'] = isset($input['thumb_size']) ? sanitize_text_field($input['thumb_size']) : 'thumbnail';
+    
+        // 验证 RSS 源
+        if (isset($input['rss_feeds']) && is_array($input['rss_feeds'])) {
+            $valid['rss_feeds'] = $this->sanitize_rss_feeds($input['rss_feeds']);
+        } else {
+            $valid['rss_feeds'] = array();
+        }
+    
+        // 验证更新频率
+        $valid['update_frequency'] = isset($input['update_frequency'])
+            ? sanitize_text_field($input['update_frequency'])
+            : 'daily';
+    
+        // 验证导入分类
+        $valid['import_category'] = isset($input['import_category'])
+            ? absint($input['import_category'])
+            : 0;
+    
+        // 验证导入作者
+        $valid['import_author'] = isset($input['import_author'])
+            ? absint($input['import_author'])
+            : get_current_user_id();
+    
+        // 验证缩略图大小
+        $valid['thumb_size'] = isset($input['thumb_size'])
+            ? sanitize_text_field($input['thumb_size'])
+            : 'thumbnail';
+    
+        // 验证强制生成缩略图选项
         $valid['force_thumb'] = isset($input['force_thumb']) ? 1 : 0;
-        $valid['import_limit'] = isset($input['import_limit']) ? intval($input['import_limit']) : 10;
-        $valid['content_exclusions'] = isset($input['content_exclusions']) ? sanitize_textarea_field($input['content_exclusions']) : '';
+    
+        // 验证导入限制
+        $valid['import_limit'] = isset($input['import_limit'])
+            ? intval($input['import_limit'])
+            : 10;
+    
+        // 验证内容排除
+        $valid['content_exclusions'] = isset($input['content_exclusions'])
+            ? sanitize_textarea_field($input['content_exclusions'])
+            : '';
+    
+        // 添加调试日志
+        error_log('Validating options: ' . print_r($input, true));
+        error_log('Validated options: ' . print_r($valid, true));
+    
         return $valid;
     }
-
-    /**
-     * 清理RSS源URL
-     */
+    
     private function sanitize_rss_feeds($feeds)
     {
-        return array_map('esc_url_raw', $feeds);
+        $sanitized_feeds = array();
+        foreach ($feeds as $feed) {
+            if (is_array($feed)) {
+                $sanitized_feed = array(
+                    'url' => esc_url_raw($feed['url']),
+                    'name' => sanitize_text_field(isset($feed['name']) ? $feed['name'] : '')
+                );
+                if (!empty($sanitized_feed['url'])) {
+                    $sanitized_feeds[] = $sanitized_feed;
+                }
+            } elseif (is_string($feed)) {
+                $sanitized_url = esc_url_raw($feed);
+                if (!empty($sanitized_url)) {
+                    $sanitized_feeds[] = $sanitized_url;
+                }
+            }
+        }
+        error_log('Sanitized RSS feeds: ' . print_r($sanitized_feeds, true));
+        return $sanitized_feeds;
     }
 
-    /**
-     * 检查AJAX权限
-     */
+
     private function check_ajax_permissions()
     {
         check_ajax_referer('rss_news_importer_nonce', 'security');
@@ -338,55 +389,66 @@ class RSS_News_Importer_Admin
         }
     }
 
-/**
-     * 立即导入AJAX处理函数
-     */
     public function import_now_ajax()
     {
         $this->check_ajax_permissions();
-        $importer = new RSS_News_Importer_Post_Importer();
+        $importer = new RSS_News_Importer_Post_Importer($this->plugin_name, $this->version);
         $options = get_option($this->option_name);
         $feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
 
-        $results = array_map(function($feed) use ($importer) {
-            $result = $importer->import_feed($feed);
-            return sprintf(__('Imported %d posts from %s', 'rss-news-importer'), $result, $feed);
+        $results = array_map(function ($feed) use ($importer) {
+            $feed_url = is_array($feed) ? $feed['url'] : $feed;
+            $feed_name = is_array($feed) && isset($feed['name']) ? $feed['name'] : $feed_url;
+            $result = $importer->import_feed($feed_url);
+            return sprintf(__('Imported %d posts from %s', 'rss-news-importer'), $result, $feed_name);
         }, $feeds);
 
         wp_send_json_success(implode('<br>', $results));
     }
 
-    /**
-     * 添加RSS源AJAX处理函数
-     */
+    
     public function add_feed_ajax()
     {
         $this->check_ajax_permissions();
-        $new_feed = isset($_POST['feed_url']) ? esc_url_raw($_POST['feed_url']) : '';
-
-        if (empty($new_feed)) {
+        $new_feed_url = isset($_POST['feed_url']) ? esc_url_raw($_POST['feed_url']) : '';
+        $new_feed_name = isset($_POST['feed_name']) ? sanitize_text_field($_POST['feed_name']) : '';
+    
+        if (empty($new_feed_url)) {
             wp_send_json_error(__('Invalid feed URL', 'rss-news-importer'));
         }
-
-        $options = get_option($this->option_name);
+    
+        $options = get_option($this->option_name, array());
         $feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
-        
-        if (!in_array($new_feed, $feeds)) {
+    
+        $existing_feed = array_filter($feeds, function ($feed) use ($new_feed_url) {
+            return (is_array($feed) && $feed['url'] === $new_feed_url) || $feed === $new_feed_url;
+        });
+    
+        if (empty($existing_feed)) {
+            $new_feed = array('url' => $new_feed_url, 'name' => $new_feed_name);
             $feeds[] = $new_feed;
             $options['rss_feeds'] = $feeds;
-            update_option($this->option_name, $options);
-            wp_send_json_success(array(
-                'message' => __('Feed added successfully', 'rss-news-importer'),
-                'feed_url' => $new_feed
-            ));
+            
+            error_log('Attempting to save options: ' . print_r($options, true));
+            
+            $save_result = update_option($this->option_name, $options);
+            
+            if ($save_result) {
+                error_log('Save result: success');
+                wp_send_json_success(array(
+                    'message' => __('Feed added successfully', 'rss-news-importer'),
+                    'feed_url' => $new_feed_url,
+                    'feed_name' => $new_feed_name
+                ));
+            } else {
+                error_log('Save result: failure');
+                wp_send_json_error(__('Failed to save feed', 'rss-news-importer'));
+            }
         } else {
             wp_send_json_error(__('Feed already exists', 'rss-news-importer'));
         }
     }
 
-    /**
-     * 移除RSS源AJAX处理函数
-     */
     public function remove_feed_ajax()
     {
         $this->check_ajax_permissions();
@@ -398,18 +460,15 @@ class RSS_News_Importer_Admin
 
         $options = get_option($this->option_name);
         $feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
-        
-        $key = array_search($feed_url, $feeds);
-        if ($key !== false) {
-            unset($feeds[$key]);
-            $options['rss_feeds'] = array_values($feeds);
-            update_option($this->option_name, $options);
-            wp_send_json_success(__('Feed removed successfully', 'rss-news-importer'));
-        } else {
-            wp_send_json_error(__('Feed not found', 'rss-news-importer'));
-        }
-    }
 
+        $feeds = array_filter($feeds, function ($feed) use ($feed_url) {
+            return (is_array($feed) && $feed['url'] !== $feed_url) || $feed !== $feed_url;
+        });
+
+        $options['rss_feeds'] = array_values($feeds);
+        update_option($this->option_name, $options);
+        wp_send_json_success(__('Feed removed successfully', 'rss-news-importer'));
+    }
     /**
      * 查看日志AJAX处理函数
      */
@@ -447,24 +506,53 @@ class RSS_News_Importer_Admin
             wp_send_json_error(__('Invalid feed URL', 'rss-news-importer'));
         }
 
-        $rss = fetch_feed($feed_url);
+        $parser = new RSS_News_Importer_Parser();
+        $feed_data = $parser->fetch_feed($feed_url);
 
-        if (is_wp_error($rss)) {
+        if (!$feed_data) {
             wp_send_json_error(__('Error fetching feed', 'rss-news-importer'));
         }
 
-        $maxitems = $rss->get_item_quantity(5);
-        $rss_items = $rss->get_items(0, $maxitems);
-
         $preview_html = '<ul>';
-        foreach ($rss_items as $item) {
+        foreach (array_slice($feed_data, 0, 5) as $item) {
             $preview_html .= '<li>';
-            $preview_html .= '<h3>' . esc_html($item->get_title()) . '</h3>';
-            $preview_html .= '<p>' . wp_trim_words($item->get_description(), 55, '...') . '</p>';
+            $preview_html .= '<h3>' . esc_html($item['title']) . '</h3>';
+            $preview_html .= '<p>' . wp_trim_words($item['description'], 55, '...') . '</p>';
             $preview_html .= '</li>';
         }
         $preview_html .= '</ul>';
 
         wp_send_json_success($preview_html);
+    }
+
+    /**
+     * 更新RSS源顺序的AJAX处理函数
+     */
+    public function update_feed_order_ajax()
+    {
+        $this->check_ajax_permissions();
+        $new_order = isset($_POST['order']) ? $_POST['order'] : array();
+
+        if (empty($new_order)) {
+            wp_send_json_error(__('Invalid feed order', 'rss-news-importer'));
+        }
+
+        $options = get_option($this->option_name);
+        $current_feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
+
+        $reordered_feeds = array();
+        foreach ($new_order as $feed_url) {
+            $feed = array_filter($current_feeds, function ($item) use ($feed_url) {
+                return (is_array($item) && $item['url'] === $feed_url) || $item === $feed_url;
+            });
+            if (!empty($feed)) {
+                $reordered_feeds[] = reset($feed);
+            }
+        }
+
+        $options['rss_feeds'] = $reordered_feeds;
+        update_option($this->option_name, $options);
+
+        wp_send_json_success(__('Feed order updated successfully', 'rss-news-importer'));
     }
 }

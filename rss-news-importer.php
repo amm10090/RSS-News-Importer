@@ -11,7 +11,7 @@
  * Plugin Name:       RSS News Importer
  * Plugin URI:        https://blog.amoze.cc/rss-news-importer
  * Description:       Import news articles from RSS feeds into WordPress posts.
- * Version:           1.3.1
+ * Version:           1.3.5
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            HuaYangTian
@@ -26,11 +26,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// 定义插件常
-define('RSS_NEWS_IMPORTER_VERSION', '1.3.1');
+// 定义插件常量
+define('RSS_NEWS_IMPORTER_VERSION', '1.3.5');
 define('RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url(__FILE__));
-
 /**
  * 检查PHP和WordPress版本要求
  */
@@ -67,6 +66,15 @@ require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'admin/class-rss-news-importer-admin
 require_once plugin_dir_path(__FILE__) . 'includes/class-rss-parser.php';
 
 /**
+ * 插件主要功能类
+ */
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer.php';
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'admin/class-rss-news-importer-admin.php';
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-parser.php';
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer-dashboard.php';
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer-cache.php';
+
+/**
  * 开始执行插件
  */
 function run_rss_news_importer() {
@@ -95,6 +103,7 @@ function run_rss_news_importer() {
         add_action('wp_ajax_rss_news_importer_import_now', array($plugin_admin, 'import_now_ajax'));
         add_action('wp_ajax_rss_news_importer_add_feed', array($plugin_admin, 'add_feed_ajax'));
         add_action('wp_ajax_rss_news_importer_remove_feed', array($plugin_admin, 'remove_feed_ajax'));
+        add_action('wp_ajax_rss_news_importer_update_feed_order', array($plugin_admin, 'update_feed_order_ajax'));
 
         // 注册激活、停用和卸载钩子
         register_activation_hook(__FILE__, array($plugin, 'activate'));
@@ -104,15 +113,15 @@ function run_rss_news_importer() {
         // 注册定时任务钩子
         add_action('rss_news_importer_cron_hook', array($plugin, 'run_importer'));
 
-        // 添加导入日志页面
+        // 添加仪表板页面
         add_action('admin_menu', function() use ($plugin_admin) {
             add_submenu_page(
                 'tools.php',
-                __('RSS News Importer Log', 'rss-news-importer'),
-                __('RSS News Importer Log', 'rss-news-importer'),
+                __('RSS News Importer Dashboard', 'rss-news-importer'),
+                __('RSS News Importer', 'rss-news-importer'),
                 'manage_options',
-                'rss-news-importer-log',
-                array($plugin_admin, 'display_import_log')
+                'rss-news-importer-dashboard',
+                array($plugin_admin, 'display_dashboard_page')
             );
         });
         
@@ -123,7 +132,6 @@ function run_rss_news_importer() {
         });
     }
 }
-
 // 初始化插件
 add_action('plugins_loaded', 'run_rss_news_importer');
 

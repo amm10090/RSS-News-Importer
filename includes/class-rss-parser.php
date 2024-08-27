@@ -2,16 +2,47 @@
 
 class RSS_News_Importer_Parser {
     public function fetch_feed($url) {
+        $headers = array(
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+        );
+
+        $last_modified = get_option('rss_news_importer_last_modified_' . md5($url));
+        $etag = get_option('rss_news_importer_etag_' . md5($url));
+
+        if ($last_modified) {
+            $headers['If-Modified-Since'] = $last_modified;
+        }
+        if ($etag) {
+            $headers['If-None-Match'] = $etag;
+        }
+
         $response = wp_safe_remote_get($url, array(
             'timeout' => 60,
-            'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+            'headers' => $headers,
         ));
 
         if (is_wp_error($response)) {
             return false;
         }
 
+        $response_code = wp_remote_retrieve_response_code($response);
+
+        if ($response_code === 304) {
+            // Content not modified
+            return 'not_modified';
+        }
+
         $body = wp_remote_retrieve_body($response);
+        $new_last_modified = wp_remote_retrieve_header($response, 'last-modified');
+        $new_etag = wp_remote_retrieve_header($response, 'etag');
+
+        if ($new_last_modified) {
+            update_option('rss_news_importer_last_modified_' . md5($url), $new_last_modified);
+        }
+        if ($new_etag) {
+            update_option('rss_news_importer_etag_' . md5($url), $new_etag);
+        }
+
         return $this->parse_feed($body);
     }
 
