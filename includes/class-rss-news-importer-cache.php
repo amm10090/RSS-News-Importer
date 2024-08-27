@@ -52,81 +52,42 @@ class RSS_News_Importer_Cache {
         $this->cache_expiration = 3600; // Default to 1 hour
     }
 
-    /**
-     * Get cached feed data.
-     *
-     * @since    1.3.1
-     * @param    string    $url    The URL of the feed.
-     * @return   mixed     The cached data or false if not found.
-     */
+    // 获取缓存的 RSS 源数据
     public function get_cached_feed($url) {
         $cache_key = 'rss_feed_' . md5($url);
         return get_transient($cache_key);
     }
 
-    /**
-     * Set cached feed data.
-     *
-     * @since    1.3.1
-     * @param    string    $url     The URL of the feed.
-     * @param    mixed     $data    The data to cache.
-     * @param    int       $expiration    Optional. The cache expiration time in seconds.
-     * @return   bool      True if the value was set, false otherwise.
-     */
+    // 设置缓存的 RSS 源数据
     public function set_cached_feed($url, $data, $expiration = null) {
         $cache_key = 'rss_feed_' . md5($url);
         $expiration = $expiration ?: $this->cache_expiration;
         return set_transient($cache_key, $data, $expiration);
     }
 
-    /**
-     * Delete cached feed data.
-     *
-     * @since    1.3.1
-     * @param    string    $url    The URL of the feed.
-     * @return   bool      True if the cache was deleted, false otherwise.
-     */
+    // 删除缓存的 RSS 源数据
     public function delete_cached_feed($url) {
         $cache_key = 'rss_feed_' . md5($url);
         return delete_transient($cache_key);
     }
 
-    /**
-     * Set the cache expiration time.
-     *
-     * @since    1.3.1
-     * @param    int    $expiration    The cache expiration time in seconds.
-     */
+    // 设置缓存过期时间
     public function set_cache_expiration($expiration) {
         $this->cache_expiration = intval($expiration);
     }
 
-    /**
-     * Get the cache expiration time.
-     *
-     * @since    1.3.1
-     * @return   int    The cache expiration time in seconds.
-     */
+    // 获取缓存过期时间
     public function get_cache_expiration() {
         return $this->cache_expiration;
     }
 
-    /**
-     * Clear all cached feed data.
-     *
-     * @since    1.3.1
-     */
+    // 清除所有缓存的 RSS 源数据
     public function clear_all_cache() {
         global $wpdb;
         $wpdb->query("DELETE FROM $wpdb->options WHERE option_name LIKE '_transient_rss_feed_%' OR option_name LIKE '_transient_timeout_rss_feed_%'");
     }
 
-    /**
-     * Get all cached feed keys.
-     *
-     * @since    1.3.1
-     * @return   array    An array of all cached feed keys.
-     */
+    // 获取所有缓存的 RSS 源键
     public function get_all_cached_feed_keys() {
         global $wpdb;
         $keys = $wpdb->get_col("SELECT option_name FROM $wpdb->options WHERE option_name LIKE '_transient_rss_feed_%' AND option_name NOT LIKE '_transient_timeout_rss_feed_%'");
