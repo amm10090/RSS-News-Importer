@@ -38,7 +38,7 @@ class RSS_News_Importer_Admin
             'view_logs',
             'preview_feed',
             'update_feed_order',
-            'get_logs' ,
+            'get_logs',
             'clear_logs'
 
 
@@ -64,19 +64,19 @@ class RSS_News_Importer_Admin
             wp_enqueue_script('jquery-ui-sortable');
             wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/rss-news-importer-admin.js', array('jquery', 'jquery-ui-sortable'), $this->version, false);
             wp_localize_script($this->plugin_name, 'rss_news_importer_ajax', $this->get_ajax_data());
-            
+
             // 加载 React 和 ReactDOM
             $this->enqueue_react_scripts();
         }
     }
 
     //加载 React 和 ReactDOM 脚本
-private function enqueue_react_scripts()
-{
-    wp_enqueue_script('react', 'https://unpkg.com/react@17/umd/react.production.min.js', array(), '17.0.2', true);
-    wp_enqueue_script('react-dom', 'https://unpkg.com/react-dom@17/umd/react-dom.production.min.js', array('react'), '17.0.2', true);
-    wp_enqueue_script('log-viewer-component', plugin_dir_url(__FILE__) . 'js/log-viewer-component.js', array('react', 'react-dom'), $this->version, true);
-}
+    private function enqueue_react_scripts()
+    {
+        wp_enqueue_script('react', 'https://unpkg.com/react@17/umd/react.production.min.js', array(), '17.0.2', true);
+        wp_enqueue_script('react-dom', 'https://unpkg.com/react-dom@17/umd/react-dom.production.min.js', array('react'), '17.0.2', true);
+        wp_enqueue_script('log-viewer-component', plugin_dir_url(__FILE__) . 'js/log-viewer-component.js', array('react', 'react-dom'), $this->version, true);
+    }
 
     // 获取AJAX数据
     private function get_ajax_data()
@@ -204,7 +204,7 @@ private function enqueue_react_scripts()
         if (!is_array($rss_feeds)) {
             $rss_feeds = array();
         }
-        ?>
+?>
         <div id="rss-feeds-list" class="sortable-list">
             <?php if (empty($rss_feeds)) : ?>
                 <p><?php _e('No RSS feeds added yet.', 'rss-news-importer'); ?></p>
@@ -229,7 +229,7 @@ private function enqueue_react_scripts()
             <button type="button" class="button" id="add-feed"><?php _e('Add New Feed', 'rss-news-importer'); ?></button>
         </div>
         <div id="feed-preview"></div>
-        <?php
+    <?php
     }
 
     // 更新频率设置字段回调
@@ -237,14 +237,14 @@ private function enqueue_react_scripts()
     {
         $options = get_option($this->option_name);
         $frequency = isset($options['update_frequency']) ? $options['update_frequency'] : 'hourly';
-        ?>
+    ?>
         <select name="<?php echo $this->option_name; ?>[update_frequency]">
             <option value="hourly" <?php selected($frequency, 'hourly'); ?>><?php _e('Hourly', 'rss-news-importer'); ?></option>
             <option value="twicedaily" <?php selected($frequency, 'twicedaily'); ?>><?php _e('Twice Daily', 'rss-news-importer'); ?></option>
             <option value="daily" <?php selected($frequency, 'daily'); ?>><?php _e('Daily', 'rss-news-importer'); ?></option>
             <option value="weekly" <?php selected($frequency, 'weekly'); ?>><?php _e('Weekly', 'rss-news-importer'); ?></option>
         </select>
-        <?php
+    <?php
         $next_run = $this->cron_manager->get_next_scheduled_time();
         echo '<p>' . sprintf(__('Next scheduled run: %s', 'rss-news-importer'), date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $next_run)) . '</p>';
     }
@@ -255,7 +255,7 @@ private function enqueue_react_scripts()
         $options = get_option($this->option_name);
         $category = isset($options['import_category']) ? $options['import_category'] : '';
         $author = isset($options['import_author']) ? $options['import_author'] : get_current_user_id();
-        ?>
+    ?>
         <p>
             <label><?php _e('Default Category:', 'rss-news-importer'); ?></label>
             <?php
@@ -277,7 +277,7 @@ private function enqueue_react_scripts()
             ));
             ?>
         </p>
-        <?php
+    <?php
     }
 
     // 缩略图设置字段回调
@@ -286,7 +286,7 @@ private function enqueue_react_scripts()
         $options = get_option($this->option_name);
         $thumb_size = isset($options['thumb_size']) ? $options['thumb_size'] : 'thumbnail';
         $force_thumb = isset($options['force_thumb']) ? $options['force_thumb'] : 0;
-        ?>
+    ?>
         <p>
             <label><?php _e('Thumbnail Size:', 'rss-news-importer'); ?></label>
             <select name="<?php echo $this->option_name; ?>[thumb_size]">
@@ -296,7 +296,7 @@ private function enqueue_react_scripts()
                     echo '<option value="' . $size . '" ' . selected($thumb_size, $size, false) . '>' . $size . '</option>';
                 }
                 ?>
-</select>
+            </select>
         </p>
         <p>
             <label>
@@ -326,7 +326,7 @@ private function enqueue_react_scripts()
     ?>
         <textarea name="<?php echo $this->option_name; ?>[content_exclusions]" rows="4" cols="50"><?php echo esc_textarea($exclusions); ?></textarea>
         <p class="description"><?php _e('Enter CSS selectors or text patterns to exclude, one per line.', 'rss-news-importer'); ?></p>
-    <?php
+<?php
     }
 
     // 验证选项
@@ -438,25 +438,25 @@ private function enqueue_react_scripts()
         $this->check_ajax_permissions();
         $new_feed_url = isset($_POST['feed_url']) ? esc_url_raw($_POST['feed_url']) : '';
         $new_feed_name = isset($_POST['feed_name']) ? sanitize_text_field($_POST['feed_name']) : '';
-    
+
         if (empty($new_feed_url)) {
             wp_send_json_error(__('Invalid feed URL', 'rss-news-importer'));
         }
-    
+
         $options = get_option($this->option_name, array());
         $feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
-    
+
         // 确保 $feeds 是一个数组
         if (!is_array($feeds)) {
             $feeds = array();
         }
-    
+
         $new_feed = array('url' => $new_feed_url, 'name' => $new_feed_name);
         $feeds[] = $new_feed;
         $options['rss_feeds'] = $feeds;
-        
+
         $save_result = update_option($this->option_name, $options);
-        
+
         if ($save_result) {
             wp_send_json_success(array(
                 'message' => __('Feed added successfully', 'rss-news-importer'),
@@ -572,59 +572,65 @@ private function enqueue_react_scripts()
     }
     //获取日志数据并返回给前端
     public function get_logs_ajax()
-{
-    $this->check_ajax_permissions();
-    $logger = new RSS_News_Importer_Logger();
-    $logs = $logger->get_logs();
+    {
+        $this->check_ajax_permissions();
+        $logger = new RSS_News_Importer_Logger();
+        $logs = $logger->get_logs();
 
-    if ($logs === false) {
-        wp_send_json_error('无法读取日志文件');
-    } else {
-        wp_send_json_success($logs);
-    }
-}
-//获取日志
-public function get_logs($limit = 100)
-{
-    $log_file = $this->get_log_file_path();
-    if (!file_exists($log_file)) {
-        return array();
-    }
-
-    $logs = array();
-    $lines = file($log_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    if ($lines === false) {
-        return false;
-    }
-
-    $lines = array_reverse($lines);
-    $count = 0;
-
-    foreach ($lines as $line) {
-        if ($count >= $limit) {
-            break;
-        }
-
-        $log_entry = json_decode($line, true);
-        if ($log_entry) {
-            $logs[] = $log_entry;
-            $count++;
+        if ($logs === false) {
+            wp_send_json_error('无法读取日志文件');
+        } else {
+            wp_send_json_success($logs);
         }
     }
-
-    return $logs;
-}
-//删除日志
-public function clear_logs_ajax()
-{
-    $this->check_ajax_permissions();
-    $logger = new RSS_News_Importer_Logger();
-    $result = $logger->clear_logs();
-
-    if ($result) {
-        wp_send_json_success('All logs have been deleted.');
-    } else {
-        wp_send_json_error('Failed to delete logs.');
+    //日志位置
+    private function get_log_file_path()
+    {
+        $upload_dir = wp_upload_dir();
+        return $upload_dir['basedir'] . '/rss-news-importer-log.txt';
     }
-}
+    //获取日志
+    public function get_logs($limit = 100)
+    {
+        $log_file = $this->get_log_file_path();
+        if (!file_exists($log_file)) {
+            return array();
+        }
+
+        $logs = array();
+        $lines = file($log_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) {
+            return false;
+        }
+
+        $lines = array_reverse($lines);
+        $count = 0;
+
+        foreach ($lines as $line) {
+            if ($count >= $limit) {
+                break;
+            }
+
+            $log_entry = json_decode($line, true);
+            if ($log_entry) {
+                $logs[] = $log_entry;
+                $count++;
+            }
+        }
+
+        return $logs;
+    }
+    //删除日志
+    public function clear_logs_ajax()
+    {
+        $this->check_ajax_permissions();
+        $logger = new RSS_News_Importer_Logger();
+        $result = $logger->clear_logs();
+
+        if ($result) {
+            wp_send_json_success('All logs have been deleted.');
+        } else {
+            wp_send_json_error('Failed to delete logs.');
+        }
+    }
 }
