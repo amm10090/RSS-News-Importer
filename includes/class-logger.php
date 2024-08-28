@@ -68,9 +68,10 @@ class RSS_News_Importer_Logger {
     }
 
     // 清除日志文件
-    public function clear_logs() {
-        if (file_exists($this->log_file)) {
-            unlink($this->log_file);
-        }
+public function clear_logs() {
+    if (file_exists($this->log_file)) {
+        return unlink($this->log_file);
     }
+    return true; // 如果文件不存在,也视为成功
+}
 }

@@ -1,28 +1,81 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: RSS News Importer 1.0.0\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/rss-news-importer\n"
-"POT-Creation-Date: 2024-08-26 12:00+0000\n"
-"PO-Revision-Date: 2024-08-26 12:30+0000\n"
-"Last-Translator: Your Name <your.email@example.com>\n"
-"Language-Team: Chinese (Simplified)\n"
+"Project-Id-Version: RSS News Importer\n"
+"POT-Creation-Date: 2024-08-28 12:00+0000\n"
+"PO-Revision-Date: 2024-08-28 12:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
 "Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.0\n"
+"X-Poedit-KeywordsList: __;_e;_n:1,2;_x:1,2c;_ex:1,2c;_nx:4c,1,2;esc_attr__;"
+"esc_attr_e;esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c;_n_noop:1,2;"
+"_nx_noop:3c,1,2;__ngettext_noop:1,2\n"
+"X-Poedit-Basepath: ..\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+"X-Poedit-SearchPath-0: .\n"
+
+msgid "RSS News Importer requires PHP version %s or higher. Your current version is %s."
+msgstr "RSS新闻导入器需要PHP版本 %s 或更高。您当前的版本是 %s。"
+
+msgid "RSS News Importer requires WordPress version %s or higher. Your current version is %s."
+msgstr "RSS新闻导入器需要WordPress版本 %s 或更高。您当前的版本是 %s。"
+
+msgid "RSS News Importer Dashboard"
+msgstr "RSS新闻导入器仪表板"
 
 msgid "RSS News Importer"
-msgstr "RSS 新闻导入器"
+msgstr "RSS新闻导入器"
+
+msgid "RSS News Importer Error: Core class not found."
+msgstr "RSS新闻导入器错误：未找到核心类。"
+
+msgid "Feed URL"
+msgstr "源URL"
+
+msgid "Last Update"
+msgstr "最后更新"
+
+msgid "Success Rate"
+msgstr "成功率"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Import Now"
+msgstr "立即导入"
+
+msgid "RSS Feed Import Failure Alert"
+msgstr "RSS源导入失败警报"
+
+msgid "The RSS feed at %s has failed to import 3 times in a row. Please check the feed and your import settings."
+msgstr "位于 %s 的RSS源连续3次导入失败。请检查源和您的导入设置。"
+
+msgid "You do not have permission to perform this action."
+msgstr "您没有权限执行此操作。"
+
+msgid "Invalid feed URL."
+msgstr "无效的源URL。"
+
+msgid "Failed to import feed."
+msgstr "导入源失败。"
+
+msgid "Successfully imported %d items."
+msgstr "成功导入 %d 个项目。"
 
 msgid "General Settings"
 msgstr "常规设置"
 
 msgid "Configure your RSS News Importer settings here."
-msgstr "在此配置您的 RSS 新闻导入器设置。"
+msgstr "在此配置您的RSS新闻导入器设置。"
 
 msgid "RSS Feeds"
-msgstr "RSS 源"
+msgstr "RSS源"
 
 msgid "Update Frequency"
 msgstr "更新频率"
@@ -39,29 +92,26 @@ msgstr "导入限制"
 msgid "Content Exclusions"
 msgstr "内容排除"
 
-msgid "Save Settings"
-msgstr "保存设置"
+msgid "No RSS feeds added yet."
+msgstr "尚未添加RSS源。"
 
-msgid "Import Now"
-msgstr "立即导入"
-
-msgid "Click the button below to manually import RSS feeds now."
-msgstr "点击下面的按钮立即手动导入 RSS 源。"
+msgid "Feed Name (optional)"
+msgstr "源名称（可选）"
 
 msgid "Remove"
 msgstr "移除"
 
+msgid "Preview"
+msgstr "预览"
+
+msgid "Enter new feed URL"
+msgstr "输入新的源URL"
+
+msgid "Enter feed name (optional)"
+msgstr "输入源名称（可选）"
+
 msgid "Add New Feed"
 msgstr "添加新源"
-
-msgid "Enter the URL of the RSS feed you want to add:"
-msgstr "输入您想要添加的 RSS 源 URL："
-
-msgid "Importing..."
-msgstr "正在导入..."
-
-msgid "An error occurred. Please try again."
-msgstr "发生错误。请重试。"
 
 msgid "Hourly"
 msgstr "每小时"
@@ -71,6 +121,12 @@ msgstr "每天两次"
 
 msgid "Daily"
 msgstr "每天"
+
+msgid "Weekly"
+msgstr "每周"
+
+msgid "Next scheduled run: %s"
+msgstr "下次计划运行：%s"
 
 msgid "Default Category:"
 msgstr "默认分类："
@@ -91,43 +147,58 @@ msgid "Limit the number of posts to import per feed."
 msgstr "限制每个源导入的文章数量。"
 
 msgid "Enter CSS selectors or text patterns to exclude, one per line."
-msgstr "输入要排除的 CSS 选择器或文本模式，每行一个。"
+msgstr "输入要排除的CSS选择器或文本模式，每行一个。"
 
-msgid "Unauthorized user"
-msgstr "未授权用户"
+msgid "Settings Saved"
+msgstr "设置已保存"
 
-msgid "Invalid feed URL"
-msgstr "无效的源 URL"
+msgid "General"
+msgstr "常规"
 
-msgid "Feed added successfully"
-msgstr "源添加成功"
+msgid "RSS Feeds"
+msgstr "RSS源"
 
-msgid "Feed removed successfully"
-msgstr "源移除成功"
+msgid "Import"
+msgstr "导入"
 
-msgid "Imported %d posts from %s"
-msgstr "从 %2$s 导入了 %1$d 篇文章"
-
-msgid "Error fetching feed"
-msgstr "获取源时出错"
-
-msgid "Preview"
-msgstr "预览"
+msgid "Logs"
+msgstr "日志"
 
 msgid "Manage RSS Feeds"
-msgstr "管理 RSS 源"
-
-msgid "Enter new feed URL"
-msgstr "输入新的源 URL"
+msgstr "管理RSS源"
 
 msgid "Add Feed"
 msgstr "添加源"
 
-msgid "Import Logs"
-msgstr "导入日志"
+msgid "Click the button below to manually import posts from all configured RSS feeds."
+msgstr "点击下面的按钮手动从所有配置的RSS源导入文章。"
 
-msgid "Refresh Logs"
-msgstr "刷新日志"
+msgid "Unauthorized user"
+msgstr "未授权用户"
+
+msgid "Imported %d posts from %s"
+msgstr "从 %2$s 导入了 %1$d 篇文章"
+
+msgid "Invalid feed URL"
+msgstr "无效的源URL"
+
+msgid "Feed added successfully"
+msgstr "源添加成功"
+
+msgid "Failed to save feed"
+msgstr "保存源失败"
+
+msgid "Feed removed successfully"
+msgstr "源移除成功"
+
+msgid "Error fetching feed"
+msgstr "获取源时出错"
+
+msgid "Invalid feed order"
+msgstr "无效的源顺序"
+
+msgid "Feed order updated successfully"
+msgstr "源顺序更新成功"
 
 msgid "Date"
 msgstr "日期"
@@ -138,26 +209,53 @@ msgstr "消息"
 msgid "Type"
 msgstr "类型"
 
-msgid "Settings Saved"
-msgstr "设置已保存"
+msgid "Search logs..."
+msgstr "搜索日志..."
 
-msgid "Feed already exists"
-msgstr "源已存在"
+msgid "All types"
+msgstr "所有类型"
 
-msgid "Feed not found"
-msgstr "未找到源"
+msgid "Info"
+msgstr "信息"
 
-msgid "Error loading feed preview."
-msgstr "加载源预览时出错。"
+msgid "Debug"
+msgstr "调试"
 
-msgid "Error loading logs."
-msgstr "加载日志时出错。"
+msgid "Error"
+msgstr "错误"
 
-msgid "General"
-msgstr "常规"
+msgid "Ascending"
+msgstr "升序"
 
-msgid "Logs"
-msgstr "日志"
+msgid "Descending"
+msgstr "降序"
 
-msgid "Click the button below to manually import posts from all configured RSS feeds."
-msgstr "点击下面的按钮从所有配置的 RSS 源手动导入文章。"
+msgid "Refresh Logs"
+msgstr "刷新日志"
+
+msgid "Delete Logs"
+msgstr "删除日志"
+
+msgid "Are you sure you want to delete all logs?"
+msgstr "您确定要删除所有日志吗？"
+
+msgid "All logs have been deleted."
+msgstr "所有日志已被删除。"
+
+msgid "Failed to delete logs: %s"
+msgstr "删除日志失败：%s"
+
+msgid "Failed to delete logs. Please try again."
+msgstr "删除日志失败。请重试。"
+
+msgid "Enter the URL of the RSS feed you want to add:"
+msgstr "输入您想添加的RSS源的URL："
+
+msgid "Importing..."
+msgstr "正在导入..."
+
+msgid "An error occurred. Please try again."
+msgstr "发生错误。请重试。"
+
+msgid "Dashboard"
+msgstr "仪表板"
