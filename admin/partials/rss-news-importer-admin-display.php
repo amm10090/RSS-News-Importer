@@ -1,14 +1,13 @@
 <?php
-// 防止直接访问文件
+// 如果直接访问此文件,则中止执行
 if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-<script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-<script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
 <div class="wrap rss-news-importer-admin">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-    
+
     <div class="rss-importer-tabs">
         <nav class="nav-tab-wrapper">
             <a href="#general" class="nav-tab nav-tab-active"><?php _e('General', 'rss-news-importer'); ?></a>
@@ -20,7 +19,7 @@ if (!defined('ABSPATH')) {
         <div class="tab-content">
             <!-- 常规设置选项卡内容 -->
             <div id="general" class="tab-pane active">
-                <form method="post" action="options.php">
+                <form method="post" action="options.php" id="rss-news-importer-form">
                     <?php
                     settings_fields($this->plugin_name);
                     do_settings_sections($this->plugin_name);
@@ -36,7 +35,7 @@ if (!defined('ABSPATH')) {
                     <div class="inside">
                         <div id="rss-feeds-list" class="sortable-list">
                             <?php
-                            $options = get_option('rss_news_importer_options', array());
+                            $options = get_option($this->option_name, array());
                             $feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
                             if (empty($feeds)) {
                                 echo '<p>' . __('No RSS feeds added yet.', 'rss-news-importer') . '</p>';
@@ -46,13 +45,13 @@ if (!defined('ABSPATH')) {
                                     $feed_name = isset($feed['name']) ? $feed['name'] : '';
                                     if (empty($feed_url)) continue;
                             ?>
-                                <div class="feed-item" data-feed-url="<?php echo esc_attr($feed_url); ?>">
-                                    <span class="dashicons dashicons-menu handle"></span>
-                                    <input type="text" name="rss_news_importer_options[rss_feeds][<?php echo $index; ?>][url]" value="<?php echo esc_url($feed_url); ?>" readonly class="feed-url">
-                                    <input type="text" name="rss_news_importer_options[rss_feeds][<?php echo $index; ?>][name]" value="<?php echo esc_attr($feed_name); ?>" placeholder="<?php _e('Feed Name (optional)', 'rss-news-importer'); ?>" class="feed-name">
-                                    <button class="button remove-feed"><?php _e('Remove', 'rss-news-importer'); ?></button>
-                                    <button class="button preview-feed"><?php _e('Preview', 'rss-news-importer'); ?></button>
-                                </div>
+                                    <div class="feed-item" data-feed-url="<?php echo esc_attr($feed_url); ?>">
+                                        <span class="dashicons dashicons-menu handle"></span>
+                                        <input type="text" value="<?php echo esc_url($feed_url); ?>" readonly class="feed-url">
+                                        <input type="text" value="<?php echo esc_attr($feed_name); ?>" placeholder="<?php _e('Feed Name (optional)', 'rss-news-importer'); ?>" class="feed-name">
+                                        <button class="button remove-feed"><?php _e('Remove', 'rss-news-importer'); ?></button>
+                                        <button class="button preview-feed"><?php _e('Preview', 'rss-news-importer'); ?></button>
+                                    </div>
                             <?php
                                 endforeach;
                             }
@@ -75,6 +74,7 @@ if (!defined('ABSPATH')) {
                     <div class="inside">
                         <p><?php _e('Click the button below to manually import posts from all configured RSS feeds.', 'rss-news-importer'); ?></p>
                         <button id="import-now" class="button button-primary"><?php _e('Import Now', 'rss-news-importer'); ?></button>
+                        <div id="import-progress" class="progress-bar" style="display:none;"></div>
                         <div id="import-results"></div>
                     </div>
                 </div>
@@ -94,10 +94,10 @@ if (!defined('ABSPATH')) {
         $('.nav-tab-wrapper .nav-tab').on('click', function(e) {
             e.preventDefault();
             var target = $(this).attr('href');
-            
+
             $('.nav-tab-wrapper .nav-tab').removeClass('nav-tab-active');
             $(this).addClass('nav-tab-active');
-            
+
             $('.tab-content .tab-pane').removeClass('active');
             $(target).addClass('active');
 

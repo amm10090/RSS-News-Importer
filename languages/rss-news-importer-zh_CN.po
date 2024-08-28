@@ -259,3 +259,96 @@ msgstr "发生错误。请重试。"
 
 msgid "Dashboard"
 msgstr "仪表板"
+
+msgid "Cron Settings"
+msgstr "定时任务设置"
+
+msgid "Task Scheduler"
+msgstr "任务调度器"
+
+msgid "Next Scheduled Run"
+msgstr "下次计划运行"
+
+msgid "Not scheduled"
+msgstr "未计划"
+
+msgid "Save Settings"
+msgstr "保存设置"
+
+msgid "Manual Import"
+msgstr "手动导入"
+
+msgid "Run Import Now"
+msgstr "立即运行导入"
+
+msgid "Import Status"
+msgstr "导入状态"
+
+msgid "Import process started..."
+msgstr "导入过程已开始..."
+
+msgid "Running Import..."
+msgstr "正在运行导入..."
+
+msgid "Error: "
+msgstr "错误："
+
+msgid "An error occurred while running the import."
+msgstr "运行导入时发生错误。"
+
+msgid "RSS import executed successfully."
+msgstr "RSS导入成功执行。"
+
+msgid "Task Name"
+msgstr "任务名称"
+
+msgid "Frequency"
+msgstr "频率"
+
+msgid "Next Run"
+msgstr "下次运行"
+
+msgid "Edit"
+msgstr "编辑"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Run Now"
+msgstr "立即运行"
+
+msgid "Add New Task"
+msgstr "添加新任务"
+
+msgid "Edit Task"
+msgstr "编辑任务"
+
+msgid "Are you sure you want to delete this task?"
+msgstr "您确定要删除此任务吗？"
+
+msgid "Task executed successfully"
+msgstr "任务成功执行"
+
+msgid "Failed to execute task"
+msgstr "执行任务失败"
+
+msgid "Invalid task name"
+msgstr "无效的任务名称"
+
+msgid "Task added successfully"
+msgstr "任务添加成功"
+
+msgid "Failed to add task"
+msgstr "添加任务失败"
+
+msgid "Task updated successfully"
+msgstr "任务更新成功"
+
+msgid "Failed to update task"
+msgstr "更新任务失败"
+
+msgid "Task deleted successfully"
+msgstr "任务删除成功"
+
+msgid "Failed to delete task"
+msgstr "删除任务失败"

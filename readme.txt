@@ -4,7 +4,7 @@ Donate link: https://blog.amoze.cc/donate
 Tags: rss, news, importer, feed
 Requires at least: 5.2
 Tested up to: 6.4
-Stable tag: 1.4.0
+Stable tag: 1.4.5
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -54,12 +54,64 @@ Yes, you can add as many RSS feeds as you like. Each feed can have its own impor
 No, the import process runs in the background and should not affect your website's performance.
 
 == Changelog ==
+=1.4.5 =
+改进和增强
+
+用户界面优化
+
+重新设计了管理界面，采用现代化的卡片式布局
+实现了选项卡式导航，提高了设置页面的可用性
+改进了按钮和输入框的样式，提升了整体视觉体验
+添加了平滑的过渡动画，增强了用户交互体验
+
+
+功能增强
+
+新增了RSS源管理功能，支持添加、编辑和排序RSS源
+改进了导入过程，现在可以显示导入进度条
+添加了导入日志功能，方便追踪和调试导入过程
+优化了RSS源的添加流程，提高了操作效率
+增加了内容排除功能，允许用户设置不想导入的内容
+
+
+性能优化
+
+优化了JavaScript代码，提高了前端性能
+改进了AJAX请求处理，提升了后端响应速度
+
+
+安全性
+
+增强了AJAX请求的安全性检查
+改进了用户权限验证机制
+
+
+
+Bug修复
+
+修复了在某些情况下设置无法保存的问题
+解决了导入过程中可能出现的内存溢出问题
+修复了日志查看器在某些环境下无法正确加载的问题
+
+开发者相关
+
+重构了插件的核心类，提高了代码的可维护性
+添加了更多的钩子和过滤器，方便进行自定义开发
+改进了错误处理和日志记录机制，便于调试
+
+其他改进
+
+更新了插件文档，反映了新的功能和设置选项
+优化了国际化支持，改进了翻译文件的结构
+
+注意：RSS源的预览和移除功能正在开发中，将在下一版本中推出。
+== Upgrade Notice ==
+
 =1.3.6 =
 1.优化rss源显示页面问题
 2.优化日志页面布局和样式 为不同的日志级别显示不同的颜色
 3.日志支持筛选 搜索 升降序,增加删除日志功能
 4.国际化和本地化 添加更多的内容
-== Upgrade Notice ==
 
 =1.3.0 =
 1. 图片处理优化:

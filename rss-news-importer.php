@@ -1,4 +1,5 @@
 <?php
+
 /**
  * RSS News Importer
  *
@@ -11,7 +12,7 @@
  * Plugin Name:       RSS News Importer
  * Plugin URI:        https://blog.amoze.cc/rss-news-importer
  * Description:       Import news articles from RSS feeds into WordPress posts.
- * Version:           1.4.0
+ * Version:           1.4.5
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            HuaYangTian
@@ -27,13 +28,24 @@ if (!defined('ABSPATH')) {
 }
 
 // 定义插件常量
-define('RSS_NEWS_IMPORTER_VERSION', '1.4.0');
+define('RSS_NEWS_IMPORTER_VERSION', '1.4.5');
 define('RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url(__FILE__));
+
+
+// 加载必要的类文件
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer.php';
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'admin/class-rss-news-importer-admin.php';
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-parser.php';
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer-dashboard.php';
+require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer-cache.php';
+
+
 /**
  * 检查PHP和WordPress版本要求
  */
-function rss_news_importer_check_requirements() {
+function rss_news_importer_check_requirements()
+{
     $php_version = phpversion();
     $wp_version = get_bloginfo('version');
     $php_min_version = '7.2';
@@ -42,14 +54,14 @@ function rss_news_importer_check_requirements() {
     $requirements_met = true;
 
     if (version_compare($php_version, $php_min_version, '<')) {
-        add_action('admin_notices', function() use ($php_version, $php_min_version) {
+        add_action('admin_notices', function () use ($php_version, $php_min_version) {
             echo '<div class="error"><p>' . sprintf(__('RSS News Importer requires PHP version %s or higher. Your current version is %s.', 'rss-news-importer'), $php_min_version, $php_version) . '</p></div>';
         });
         $requirements_met = false;
     }
 
     if (version_compare($wp_version, $wp_min_version, '<')) {
-        add_action('admin_notices', function() use ($wp_version, $wp_min_version) {
+        add_action('admin_notices', function () use ($wp_version, $wp_min_version) {
             echo '<div class="error"><p>' . sprintf(__('RSS News Importer requires WordPress version %s or higher. Your current version is %s.', 'rss-news-importer'), $wp_min_version, $wp_version) . '</p></div>';
         });
         $requirements_met = false;
@@ -59,25 +71,10 @@ function rss_news_importer_check_requirements() {
 }
 
 /**
- * 插件主要功能类
- */
-require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer.php';
-require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'admin/class-rss-news-importer-admin.php';
-require_once plugin_dir_path(__FILE__) . 'includes/class-rss-parser.php';
-
-/**
- * 插件主要功能类
- */
-require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer.php';
-require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'admin/class-rss-news-importer-admin.php';
-require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-parser.php';
-require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer-dashboard.php';
-require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-rss-news-importer-cache.php';
-
-/**
  * 开始执行插件
  */
-function run_rss_news_importer() {
+function run_rss_news_importer()
+{
     if (!rss_news_importer_check_requirements()) {
         return;
     }
@@ -88,33 +85,35 @@ function run_rss_news_importer() {
     if (class_exists('RSS_News_Importer')) {
         $plugin = new RSS_News_Importer();
         $plugin_admin = new RSS_News_Importer_Admin($plugin->get_plugin_name(), $plugin->get_version());
-    
+        $cron_manager = new RSS_News_Importer_Cron_Manager($plugin->get_plugin_name(), $plugin->get_version());
+
         // 注册管理菜单
         add_action('admin_menu', array($plugin_admin, 'add_plugin_admin_menu'));
-        
+
         // 注册设置
         add_action('admin_init', array($plugin_admin, 'register_settings'));
 
         // 注册样式和脚本加载函数
         add_action('admin_enqueue_scripts', array($plugin_admin, 'enqueue_styles'));
         add_action('admin_enqueue_scripts', array($plugin_admin, 'enqueue_scripts'));
-        
+
         // AJAX 处理
         add_action('wp_ajax_rss_news_importer_import_now', array($plugin_admin, 'import_now_ajax'));
         add_action('wp_ajax_rss_news_importer_add_feed', array($plugin_admin, 'add_feed_ajax'));
         add_action('wp_ajax_rss_news_importer_remove_feed', array($plugin_admin, 'remove_feed_ajax'));
         add_action('wp_ajax_rss_news_importer_update_feed_order', array($plugin_admin, 'update_feed_order_ajax'));
+        add_action('wp_ajax_rss_news_importer_run_task', array($plugin_admin, 'run_task_ajax'));
 
+        // 注册定时任务钩子
+        add_action('rss_news_importer_cron_hook', array($cron_manager, 'run_tasks'));
+        add_action('admin_init', array($plugin_admin, 'handle_cron_settings_save'));
         // 注册激活、停用和卸载钩子
         register_activation_hook(__FILE__, array($plugin, 'activate'));
         register_deactivation_hook(__FILE__, array($plugin, 'deactivate'));
         register_uninstall_hook(__FILE__, array('RSS_News_Importer', 'uninstall'));
 
-        // 注册定时任务钩子
-        add_action('rss_news_importer_cron_hook', array($plugin, 'run_importer'));
-
         // 添加仪表板页面
-        add_action('admin_menu', function() use ($plugin_admin) {
+        add_action('admin_menu', function () use ($plugin_admin) {
             add_submenu_page(
                 'tools.php',
                 __('RSS News Importer Dashboard', 'rss-news-importer'),
@@ -124,24 +123,26 @@ function run_rss_news_importer() {
                 array($plugin_admin, 'display_dashboard_page')
             );
         });
-        
+
         $plugin->run();
     } else {
-        add_action('admin_notices', function() {
+        add_action('admin_notices', function () {
             echo '<div class="error"><p>' . __('RSS News Importer Error: Core class not found.', 'rss-news-importer') . '</p></div>';
         });
     }
 }
+
 // 初始化插件
 add_action('plugins_loaded', 'run_rss_news_importer');
 
 /**
  * 设置插件更新检查器
  */
-function setup_rss_news_importer_updater() {
+function setup_rss_news_importer_updater()
+{
     if (file_exists(__DIR__ . '/plugin-update-checker/plugin-update-checker.php')) {
         require_once __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
-        
+
         $myUpdateChecker = YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
             'https://github.com/amm10090/RSS-News-Importer',
             __FILE__,
