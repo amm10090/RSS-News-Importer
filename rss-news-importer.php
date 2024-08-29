@@ -12,7 +12,7 @@
  * Plugin Name:       RSS News Importer
  * Plugin URI:        https://blog.amoze.cc/rss-news-importer
  * Description:       Import news articles from RSS feeds into WordPress posts.
- * Version:           1.4.5
+ * Version:           1.5.0
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            HuaYangTian
@@ -28,7 +28,7 @@ if (!defined('ABSPATH')) {
 }
 
 // 定义插件常量
-define('RSS_NEWS_IMPORTER_VERSION', '1.4.5');
+define('RSS_NEWS_IMPORTER_VERSION', '1.5.0');
 define('RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url(__FILE__));
 

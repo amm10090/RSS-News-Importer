@@ -352,3 +352,171 @@ msgstr "任务删除成功"
 
 msgid "Failed to delete task"
 msgstr "删除任务失败"
+msgid "Once Weekly"
+msgstr "每周一次"
+
+msgid "Once a month"
+msgstr "每月一次"
+
+msgid "Custom"
+msgstr "自定义"
+
+msgid "Post Status:"
+msgstr "文章状态："
+
+msgid "Draft"
+msgstr "草稿"
+
+msgid "Published"
+msgstr "已发布"
+
+msgid "Pending Review"
+msgstr "待审核"
+
+msgid "Choose the status for imported posts."
+msgstr "选择导入文章的状态。"
+
+msgid "RSS News Importer Settings"
+msgstr "RSS新闻导入器设置"
+
+msgid "Save Changes"
+msgstr "保存更改"
+
+msgid "Feed successfully imported"
+msgstr "源成功导入"
+
+msgid "Failed to import feed"
+msgstr "导入源失败"
+
+msgid "Are you sure you want to remove this feed?"
+msgstr "您确定要移除这个源吗？"
+
+msgid "Refresh Feed List"
+msgstr "刷新源列表"
+
+msgid "Last Import"
+msgstr "上次导入"
+
+msgid "Next Import"
+msgstr "下次导入"
+
+msgid "Never"
+msgstr "从不"
+
+msgid "RSS News Importer Log"
+msgstr "RSS新闻导入器日志"
+
+msgid "Clear Log"
+msgstr "清除日志"
+
+msgid "Log cleared successfully"
+msgstr "日志成功清除"
+
+msgid "Failed to clear log"
+msgstr "清除日志失败"
+
+msgid "No logs found"
+msgstr "未找到日志"
+
+msgid "Imported Articles"
+msgstr "已导入文章"
+
+msgid "View Imported Articles"
+msgstr "查看已导入文章"
+
+msgid "RSS News Importer Statistics"
+msgstr "RSS新闻导入器统计"
+
+msgid "Total Feeds"
+msgstr "总源数"
+
+msgid "Total Imported Articles"
+msgstr "总导入文章数"
+
+msgid "Last Import Time"
+msgstr "上次导入时间"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Help"
+msgstr "帮助"
+
+msgid "About"
+msgstr "关于"
+
+msgid "Version"
+msgstr "版本"
+
+msgid "Author"
+msgstr "作者"
+
+msgid "Support"
+msgstr "支持"
+
+msgid "Documentation"
+msgstr "文档"
+
+msgid "Donate"
+msgstr "捐赠"
+msgid "Connection error"
+msgstr "连接错误"
+
+msgid "Parse error"
+msgstr "解析错误"
+
+msgid "Active"
+msgstr "活跃"
+
+msgid "Inactive"
+msgstr "非活跃"
+
+msgid "Paused"
+msgstr "已暂停"
+msgid "Advanced Settings"
+msgstr "高级设置"
+
+msgid "Post Status:"
+msgstr "文章状态："
+
+msgid "Published"
+msgstr "已发布"
+
+msgid "Draft"
+msgstr "草稿"
+
+msgid "Pending Review"
+msgstr "等待审核"
+msgid "Refresh Feed"
+msgstr "刷新源"
+
+msgid "Last Import"
+msgstr "上次导入"
+
+msgid "Total Imported"
+msgstr "总计导入"
+
+msgid "Import Failed"
+msgstr "导入失败"
+msgid "Are you sure you want to remove this feed?"
+msgstr "您确定要移除这个源吗？"
+
+msgid "Changes saved successfully."
+msgstr "更改已成功保存。"
+
+msgid "No changes were made."
+msgstr "没有进行任何更改。"
+msgid "Export Settings"
+msgstr "导出设置"
+
+msgid "Import Settings"
+msgstr "导入设置"
+
+msgid "Reset to Default"
+msgstr "重置为默认值"
+
+msgid "Support"
+msgstr "支持"
+
+msgid "Documentation"
+msgstr "文档"

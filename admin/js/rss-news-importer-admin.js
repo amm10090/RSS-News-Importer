@@ -32,7 +32,6 @@
                 e.preventDefault();
                 this.removeFeed($(e.currentTarget).closest('.feed-item'));
             });
-
             $(document).on('click', '#rss-feeds-list .preview-feed', (e) => {
                 e.preventDefault();
                 this.previewFeed($(e.currentTarget).closest('.feed-item'));
@@ -40,14 +39,14 @@
             this.importNowBtn.on('click', () => this.importNow());
             $('#view-logs').on('click', () => this.viewLogs());
             $('.run-now').on('click', (e) => this.runTask($(e.target)));
-            this.form.on('submit', (e) => this.saveSettings(e));
+            // 移除了表单提交的处理，现在由 WordPress 自动处理
         },
 
         // 初始化可排序功能
         initSortable() {
             this.feedsList.sortable({
                 handle: '.handle',
-                update: (event, ui) => this.updateFeedOrder()
+                update: () => this.updateFeedOrder()
             });
         },
 
@@ -82,16 +81,8 @@
             const feedName = this.newFeedName.val().trim();
             if (!feedUrl) return;
 
-            $.ajax({
-                url: rss_news_importer_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'rss_news_importer_add_feed',
-                    feed_url: feedUrl,
-                    feed_name: feedName,
-                    security: rss_news_importer_ajax.nonce
-                },
-                success: (response) => {
+            this.ajaxRequest('rss_news_importer_add_feed', { feed_url: feedUrl, feed_name: feedName })
+                .then((response) => {
                     if (response.success) {
                         const feedItem = $(response.data.html);
                         this.feedsList.append(feedItem);
@@ -102,12 +93,8 @@
                     } else {
                         this.showFeedback(response.data, 'error');
                     }
-                },
-                error: (jqXHR, textStatus, errorThrown) => {
-                    console.error('AJAX error:', textStatus, errorThrown);
-                    this.showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
-                }
-            });
+                })
+                .catch(this.handleAjaxError.bind(this));
         },
 
         // 移除RSS源
@@ -118,15 +105,8 @@
                 return;
             }
 
-            $.ajax({
-                url: rss_news_importer_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'rss_news_importer_remove_feed',
-                    feed_url: feedUrl,
-                    security: rss_news_importer_ajax.nonce
-                },
-                success: (response) => {
+            this.ajaxRequest('rss_news_importer_remove_feed', { feed_url: feedUrl })
+                .then((response) => {
                     if (response.success) {
                         feedItem.fadeOut(() => {
                             feedItem.remove();
@@ -135,12 +115,8 @@
                     } else {
                         this.showFeedback(response.data, 'error');
                     }
-                },
-                error: (jqXHR, textStatus, errorThrown) => {
-                    console.error('AJAX error:', textStatus, errorThrown);
-                    this.showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
-                }
-            });
+                })
+                .catch(this.handleAjaxError.bind(this));
         },
 
         // 预览RSS源
@@ -151,51 +127,29 @@
                 return;
             }
 
-            $.ajax({
-                url: rss_news_importer_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'rss_news_importer_preview_feed',
-                    feed_url: feedUrl,
-                    security: rss_news_importer_ajax.nonce
-                },
-                success: (response) => {
+            this.ajaxRequest('rss_news_importer_preview_feed', { feed_url: feedUrl })
+                .then((response) => {
                     if (response.success) {
                         feedItem.find('.feed-preview').html(response.data).hide().fadeIn();
                     } else {
                         this.showFeedback(response.data, 'error');
                     }
-                },
-                error: (jqXHR, textStatus, errorThrown) => {
-                    console.error('AJAX error:', textStatus, errorThrown);
-                    this.showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
-                }
-            });
+                })
+                .catch(this.handleAjaxError.bind(this));
         },
 
         // 更新RSS源顺序
         updateFeedOrder() {
             const feedOrder = this.feedsList.sortable('toArray', { attribute: 'data-feed-url' });
-            $.ajax({
-                url: rss_news_importer_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'rss_news_importer_update_feed_order',
-                    order: feedOrder,
-                    security: rss_news_importer_ajax.nonce
-                },
-                success: (response) => {
+            this.ajaxRequest('rss_news_importer_update_feed_order', { order: feedOrder })
+                .then((response) => {
                     if (response.success) {
                         this.showFeedback(response.data, 'success');
                     } else {
                         this.showFeedback(response.data, 'error');
                     }
-                },
-                error: (jqXHR, textStatus, errorThrown) => {
-                    console.error('AJAX error:', textStatus, errorThrown);
-                    this.showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
-                }
-            });
+                })
+                .catch(this.handleAjaxError.bind(this));
         },
 
         // 立即导入RSS源
@@ -203,13 +157,7 @@
             this.importNowBtn.prop('disabled', true).text(rss_news_importer_ajax.i18n.importing_text);
             this.importProgress.show().css('width', '0%');
 
-            $.ajax({
-                url: rss_news_importer_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'rss_news_importer_import_now',
-                    security: rss_news_importer_ajax.nonce
-                },
+            this.ajaxRequest('rss_news_importer_import_now', {}, {
                 xhr: () => {
                     const xhr = new window.XMLHttpRequest();
                     xhr.upload.addEventListener('progress', (evt) => {
@@ -219,46 +167,33 @@
                         }
                     }, false);
                     return xhr;
-                },
-                success: (response) => {
+                }
+            })
+                .then((response) => {
                     if (response.success) {
                         this.importResults.html(response.data).hide().fadeIn();
                     } else {
                         this.showFeedback(response.data, 'error');
                     }
+                })
+                .catch(this.handleAjaxError.bind(this))
+                .finally(() => {
                     this.importNowBtn.prop('disabled', false).text(rss_news_importer_ajax.i18n.import_now_text);
                     this.importProgress.hide();
-                },
-                error: (jqXHR, textStatus, errorThrown) => {
-                    console.error('AJAX error:', textStatus, errorThrown);
-                    this.showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
-                    this.importNowBtn.prop('disabled', false).text(rss_news_importer_ajax.i18n.import_now_text);
-                    this.importProgress.hide();
-                }
-            });
+                });
         },
 
         // 查看日志
         viewLogs() {
-            $.ajax({
-                url: rss_news_importer_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'rss_news_importer_view_logs',
-                    security: rss_news_importer_ajax.nonce
-                },
-                success: (response) => {
+            this.ajaxRequest('rss_news_importer_view_logs')
+                .then((response) => {
                     if (response.success) {
                         $('#import-logs').html(response.data).hide().fadeIn();
                     } else {
                         this.showFeedback('加载日志时出错。', 'error');
                     }
-                },
-                error: (jqXHR, textStatus, errorThrown) => {
-                    console.error('AJAX error:', textStatus, errorThrown);
-                    this.showFeedback('加载日志时出错。', 'error');
-                }
-            });
+                })
+                .catch(this.handleAjaxError.bind(this));
         },
 
         // 加载日志查看器
@@ -279,48 +214,18 @@
             const taskName = button.data('task');
             button.prop('disabled', true).text(rss_news_importer_ajax.i18n.running_text);
 
-            $.ajax({
-                url: rss_news_importer_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'rss_news_importer_run_task',
-                    task_name: taskName,
-                    security: rss_news_importer_ajax.nonce
-                },
-                success: (response) => {
+            this.ajaxRequest('rss_news_importer_run_task', { task_name: taskName })
+                .then((response) => {
                     if (response.success) {
                         this.showFeedback(response.data, 'success');
                     } else {
                         this.showFeedback(response.data, 'error');
                     }
+                })
+                .catch(this.handleAjaxError.bind(this))
+                .finally(() => {
                     button.prop('disabled', false).text(rss_news_importer_ajax.i18n.run_now_text);
-                },
-                error: (jqXHR, textStatus, errorThrown) => {
-                    console.error('AJAX error:', textStatus, errorThrown);
-                    this.showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
-                    button.prop('disabled', false).text(rss_news_importer_ajax.i18n.run_now_text);
-                }
-            });
-        },
-
-        // 保存设置
-        saveSettings(e) {
-            e.preventDefault();
-            const formData = this.form.serialize();
-
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: formData,
-                success: (response) => {
-                    console.log('Save success:', response);
-                    this.showFeedback('设置已保存', 'success');
-                },
-                error: (jqXHR, textStatus, errorThrown) => {
-                    console.error('AJAX error:', textStatus, errorThrown);
-                    this.showFeedback('保存设置时出错', 'error');
-                }
-            });
+                });
         },
 
         // 显示反馈信息
@@ -333,6 +238,29 @@
                     feedback.remove();
                 });
             }, 3000);
+        },
+
+        // 发送AJAX请求
+        ajaxRequest(action, data = {}, options = {}) {
+            const defaultData = {
+                action: action,
+                security: rss_news_importer_ajax.nonce
+            };
+
+            const ajaxOptions = {
+                url: rss_news_importer_ajax.ajax_url,
+                type: 'POST',
+                data: { ...defaultData, ...data },
+                ...options
+            };
+
+            return $.ajax(ajaxOptions);
+        },
+
+        // 处理AJAX错误
+        handleAjaxError(jqXHR, textStatus, errorThrown) {
+            console.error('AJAX error:', textStatus, errorThrown);
+            this.showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
         }
     };
 
