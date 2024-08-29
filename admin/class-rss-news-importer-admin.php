@@ -492,11 +492,10 @@ class RSS_News_Importer_Admin
     {
         $this->check_ajax_permissions();
 
-        error_log('Remove feed AJAX called'); // 调试日志
-
         $feed_url = isset($_POST['feed_url']) ? esc_url_raw($_POST['feed_url']) : '';
 
         if (empty($feed_url)) {
+            error_log('RSS Importer: Attempt to remove feed with empty URL');
             wp_send_json_error('Invalid feed URL');
             exit;
         }
@@ -504,19 +503,31 @@ class RSS_News_Importer_Admin
         $options = get_option($this->option_name);
         $feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
 
+        error_log('RSS Importer: Removing feed - ' . $feed_url);
+        error_log('RSS Importer: Current feeds - ' . print_r($feeds, true));
+
+        // 修改过滤逻辑
         $feeds = array_filter($feeds, function ($feed) use ($feed_url) {
-            return (is_array($feed) && $feed['url'] !== $feed_url) || $feed !== $feed_url;
+            if (is_array($feed)) {
+                return $feed['url'] !== $feed_url;
+            }
+            return $feed !== $feed_url;
         });
 
         $options['rss_feeds'] = array_values($feeds);
+
+        // 添加更多的日志
+        error_log('RSS Importer: Feeds after removal - ' . print_r($options['rss_feeds'], true));
+
         $update_result = update_option($this->option_name, $options);
 
         if ($update_result) {
+            error_log('RSS Importer: Feed removed successfully');
             wp_send_json_success('Feed removed successfully');
         } else {
+            error_log('RSS Importer: Failed to remove feed. Current option value: ' . print_r(get_option($this->option_name), true));
             wp_send_json_error('Failed to remove feed');
         }
-        exit;
     }
     /**
      * AJAX处理方法: 查看日志
@@ -550,8 +561,6 @@ class RSS_News_Importer_Admin
     {
         $this->check_ajax_permissions();
 
-        error_log('Preview feed AJAX called'); // 调试日志
-
         $feed_url = isset($_POST['feed_url']) ? esc_url_raw($_POST['feed_url']) : '';
 
         if (empty($feed_url)) {
@@ -560,24 +569,13 @@ class RSS_News_Importer_Admin
         }
 
         $parser = new RSS_News_Importer_Parser();
-        $feed_data = $parser->fetch_feed($feed_url);
+        $preview_html = $parser->preview_feed($feed_url);
 
-        if (!$feed_data) {
-            wp_send_json_error('Error fetching feed');
-            exit;
+        if (is_wp_error($preview_html)) {
+            wp_send_json_error($preview_html->get_error_message());
+        } else {
+            wp_send_json_success($preview_html);
         }
-
-        $preview_html = '<ul>';
-        foreach (array_slice($feed_data, 0, 5) as $item) {
-            $preview_html .= '<li>';
-            $preview_html .= '<h3>' . esc_html($item['title']) . '</h3>';
-            $preview_html .= '<p>' . wp_trim_words($item['description'], 55, '...') . '</p>';
-            $preview_html .= '</li>';
-        }
-        $preview_html .= '</ul>';
-
-        wp_send_json_success($preview_html);
-        exit;
     }
     /**
      * AJAX处理方法: 更新RSS源顺序

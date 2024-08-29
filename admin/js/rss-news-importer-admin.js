@@ -28,13 +28,14 @@
         // 绑定事件
         bindEvents() {
             this.addFeedBtn.on('click', () => this.addFeed());
-            this.feedsList.on('click', '.remove-feed', (e) => {
+            $(document).on('click', '#rss-feeds-list .remove-feed', (e) => {
                 e.preventDefault();
-                this.removeFeed($(e.target).closest('.feed-item'));
+                this.removeFeed($(e.currentTarget).closest('.feed-item'));
             });
-            this.feedsList.on('click', '.preview-feed', (e) => {
+
+            $(document).on('click', '#rss-feeds-list .preview-feed', (e) => {
                 e.preventDefault();
-                this.previewFeed($(e.target).closest('.feed-item'));
+                this.previewFeed($(e.currentTarget).closest('.feed-item'));
             });
             this.importNowBtn.on('click', () => this.importNow());
             $('#view-logs').on('click', () => this.viewLogs());
@@ -112,6 +113,11 @@
         // 移除RSS源
         removeFeed(feedItem) {
             const feedUrl = feedItem.find('.feed-url').val();
+            if (!feedUrl) {
+                console.error('Feed URL not found');
+                return;
+            }
+
             $.ajax({
                 url: rss_news_importer_ajax.ajax_url,
                 type: 'POST',
@@ -140,6 +146,11 @@
         // 预览RSS源
         previewFeed(feedItem) {
             const feedUrl = feedItem.find('.feed-url').val();
+            if (!feedUrl) {
+                console.error('Feed URL not found');
+                return;
+            }
+
             $.ajax({
                 url: rss_news_importer_ajax.ajax_url,
                 type: 'POST',
@@ -150,17 +161,14 @@
                 },
                 success: (response) => {
                     if (response.success) {
-                        this.feedPreview.html(response.data).hide().fadeIn();
-                        $('html, body').animate({
-                            scrollTop: this.feedPreview.offset().top
-                        }, 500);
+                        feedItem.find('.feed-preview').html(response.data).hide().fadeIn();
                     } else {
-                        this.showFeedback('预览RSS源时出错。', 'error');
+                        this.showFeedback(response.data, 'error');
                     }
                 },
                 error: (jqXHR, textStatus, errorThrown) => {
                     console.error('AJAX error:', textStatus, errorThrown);
-                    this.showFeedback('预览RSS源时出错。', 'error');
+                    this.showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
                 }
             });
         },
