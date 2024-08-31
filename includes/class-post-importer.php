@@ -1,29 +1,65 @@
 <?php
 
+// 如果直接访问此文件，则中止执行
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 class RSS_News_Importer_Post_Importer
 {
-    private $parser;
-    private $logger;
-    private $cache;
-    private $dashboard;
-    private $option_name = 'rss_news_importer_options';
+    // 插件名称
     private $plugin_name;
+
+    // 插件版本
     private $version;
+
+    // RSS解析器实例
+    private $parser;
+
+    // 日志记录器实例
+    private $logger;
+
+    // 缓存实例
+    private $cache;
+
+    // 仪表板实例
+    private $dashboard;
+
+    // 选项名称
+    private $option_name = 'rss_news_importer_options';
+
+    // 图片抓取器实例
     private $image_scraper;
 
     /**
      * 构造函数：初始化导入器
+     *
+     * @param string $plugin_name 插件名称
+     * @param string $version 插件版本
      */
-    public function __construct()
+    public function __construct($plugin_name, $version)
     {
+        $this->plugin_name = $plugin_name;
+        $this->version = $version;
         $this->parser = new RSS_News_Importer_Parser();
         $this->logger = new RSS_News_Importer_Logger();
         $this->cache = new RSS_News_Importer_Cache($this->plugin_name, $this->version);
-        $this->dashboard = new RSS_News_Importer_Dashboard($this->plugin_name, $this->version);
+    }
+
+    /**
+     * 设置仪表板实例
+     *
+     * @param RSS_News_Importer_Dashboard $dashboard 仪表板实例
+     */
+    public function set_dashboard(RSS_News_Importer_Dashboard $dashboard)
+    {
+        $this->dashboard = $dashboard;
     }
 
     /**
      * 设置图片抓取器
+     *
+     * @param object $scraper 图片抓取器实例
      */
     public function set_image_scraper($scraper)
     {
@@ -32,6 +68,9 @@ class RSS_News_Importer_Post_Importer
 
     /**
      * 导入RSS源
+     *
+     * @param string $url RSS源URL
+     * @return int|bool 导入的文章数量，失败时返回false
      */
     public function import_feed($url)
     {
@@ -68,6 +107,11 @@ class RSS_News_Importer_Post_Importer
 
     /**
      * 处理源数据
+     *
+     * @param array $rss_items RSS项目数组
+     * @param string $url RSS源URL
+     * @param int $import_limit 导入限制
+     * @return int 导入的文章数量
      */
     private function process_feed_data($rss_items, $url, $import_limit)
     {
@@ -85,12 +129,16 @@ class RSS_News_Importer_Post_Importer
 
         $this->logger->log("Imported $imported_count items from $url (Skipped $skipped_count duplicates)", 'info');
         $this->dashboard->update_feed_status($url, $imported_count > 0);
+        $this->dashboard->update_import_statistics($imported_count);
 
         return $imported_count;
     }
 
     /**
      * 导入单个项目
+     *
+     * @param array $item RSS项目
+     * @return bool|string true表示成功导入，'skipped'表示跳过，false表示失败
      */
     private function import_item($item)
     {
@@ -101,14 +149,14 @@ class RSS_News_Importer_Post_Importer
         }
 
         $post_content = $this->filter_content($item['content'] ?: $item['description']);
-        $options = get_option('rss_news_importer_options');
+        $options = get_option($this->option_name);
         $post_status = isset($options['post_status']) ? $options['post_status'] : 'draft';
         $post_data = array(
             'post_title'    => wp_strip_all_tags($item['title']),
             'post_content'  => $post_content,
             'post_excerpt'  => wp_trim_words($item['description'], 55, '...'),
             'post_date'     => date('Y-m-d H:i:s', strtotime($item['pubDate'])),
-            'post_status'   => 'post_status',
+            'post_status'   => $post_status,
             'post_author'   => $this->get_default_author(),
             'post_type'     => 'post',
             'post_category' => $this->get_default_category(),
@@ -126,56 +174,59 @@ class RSS_News_Importer_Post_Importer
             return false;
         }
 
-        // 设置特色图片
-        $this->logger->log("Attempting to set featured image for: " . $item['title'], 'debug');
-
-        $thumbnail_id = $this->set_featured_image($post_id, $item['thumbnail'], $item['title']);
-        if ($thumbnail_id) {
-            $this->logger->log("Featured image set from RSS thumbnail", 'debug');
-        } else {
-            $this->logger->log("Failed to set featured image from RSS thumbnail", 'debug');
-
-            $first_image = $this->get_first_image_from_content($post_content);
-            if ($first_image) {
-                $thumbnail_id = $this->set_featured_image($post_id, $first_image, $item['title']);
-                if ($thumbnail_id) {
-                    $this->logger->log("Featured image set from content", 'debug');
-                } else {
-                    $this->logger->log("Failed to set featured image from content", 'debug');
-                }
-            } else {
-                $this->logger->log("No image found in content", 'debug');
-            }
-        }
-
-        if (!$thumbnail_id) {
-            $this->logger->log("Attempting to scrape image from latest pages", 'debug');
-            $base_url = $this->get_website_url();
-            $scraped_image_url = $this->scrape_image_from_latest_pages($item['title'], $item['link'], $item['pubDate'], $base_url);
-            if ($scraped_image_url) {
-                $thumbnail_id = $this->set_featured_image($post_id, $scraped_image_url, $item['title']);
-                if ($thumbnail_id) {
-                    $this->logger->log("Featured image set from scraped image: " . $scraped_image_url, 'debug');
-                } else {
-                    $this->logger->log("Failed to set featured image from scraped image: " . $scraped_image_url, 'debug');
-                }
-            } else {
-                $this->logger->log("No image found from scraping latest pages", 'debug');
-            }
-        }
-
-        if ($thumbnail_id) {
-            update_post_meta($post_id, 'rss_news_importer_cover_image', wp_get_attachment_url($thumbnail_id));
-            $this->logger->log("Cover image meta updated for post: " . $post_id, 'debug');
-        } else {
-            $this->logger->log("No cover image set for post: " . $post_id, 'debug');
-        }
+        $this->set_post_thumbnail($post_id, $item);
+        $this->set_post_tags($post_id, $item);
 
         return true;
     }
 
     /**
+     * 设置文章缩略图
+     *
+     * @param int $post_id 文章ID
+     * @param array $item RSS项目
+     */
+    private function set_post_thumbnail($post_id, $item)
+    {
+        $thumbnail_id = $this->set_featured_image($post_id, $item['thumbnail'], $item['title']);
+        
+        if (!$thumbnail_id) {
+            $first_image = $this->get_first_image_from_content($item['content']);
+            if ($first_image) {
+                $thumbnail_id = $this->set_featured_image($post_id, $first_image, $item['title']);
+            }
+        }
+
+        if (!$thumbnail_id && $this->image_scraper) {
+            $scraped_image_url = $this->image_scraper->scrape_image($item['link'], $item['title']);
+            if ($scraped_image_url) {
+                $thumbnail_id = $this->set_featured_image($post_id, $scraped_image_url, $item['title']);
+            }
+        }
+
+        if ($thumbnail_id) {
+            update_post_meta($post_id, 'rss_news_importer_cover_image', wp_get_attachment_url($thumbnail_id));
+        }
+    }
+
+    /**
+     * 设置文章标签
+     *
+     * @param int $post_id 文章ID
+     * @param array $item RSS项目
+     */
+    private function set_post_tags($post_id, $item)
+    {
+        if (!empty($item['categories'])) {
+            wp_set_post_tags($post_id, $item['categories'], true);
+        }
+    }
+
+    /**
      * 检查文章是否已存在
+     *
+     * @param string $guid 全局唯一标识符
+     * @return bool 文章是否存在
      */
     private function post_exists($guid)
     {
@@ -185,6 +236,8 @@ class RSS_News_Importer_Post_Importer
 
     /**
      * 获取默认作者
+     *
+     * @return int 默认作者ID
      */
     private function get_default_author()
     {
@@ -194,6 +247,8 @@ class RSS_News_Importer_Post_Importer
 
     /**
      * 获取默认分类
+     *
+     * @return array 默认分类ID数组
      */
     private function get_default_category()
     {
@@ -203,16 +258,12 @@ class RSS_News_Importer_Post_Importer
     }
 
     /**
-     * 获取网站URL
-     */
-    private function get_website_url()
-    {
-        $options = get_option($this->option_name);
-        return isset($options['website_url']) ? $options['website_url'] : 'https://newsbusters.org';
-    }
-    //
-    /**
      * 设置特色图片
+     *
+     * @param int $post_id 文章ID
+     * @param string $image_url 图片URL
+     * @param string $title 文章标题
+     * @return int|false 附件ID，失败时返回false
      */
     private function set_featured_image($post_id, $image_url, $title)
     {
@@ -220,76 +271,41 @@ class RSS_News_Importer_Post_Importer
             return false;
         }
 
-        $clean_image_url = preg_replace('/\?.*/', '', $image_url);
+        $upload_dir = wp_upload_dir();
+        $image_data = file_get_contents($image_url);
+        $filename = basename($image_url);
 
-        $cached_image_id = $this->get_cached_image($clean_image_url);
-        if ($cached_image_id) {
-            set_post_thumbnail($post_id, $cached_image_id);
-            return $cached_image_id;
+        if (wp_mkdir_p($upload_dir['path'])) {
+            $file = $upload_dir['path'] . '/' . $filename;
+        } else {
+            $file = $upload_dir['basedir'] . '/' . $filename;
         }
 
-        require_once(ABSPATH . 'wp-admin/includes/media.php');
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        file_put_contents($file, $image_data);
 
-        add_filter('http_request_args', function ($args, $url) use ($image_url) {
-            $args['user-agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
-            $args['headers']['Referer'] = $image_url;
-            return $args;
-        }, 10, 2);
-
-        $tmp = $this->download_with_exponential_backoff($clean_image_url);
-
-        if (is_wp_error($tmp)) {
-            $this->logger->log("Failed to download image: " . $clean_image_url . ". Error: " . $tmp->get_error_message(), 'error');
-            return false;
-        }
-
-        $compressed_tmp = $this->compress_image($tmp);
-        if ($compressed_tmp) {
-            @unlink($tmp);
-            $tmp = $compressed_tmp;
-        }
-
-        $file_array = array(
-            'name' => sanitize_file_name(basename($clean_image_url)),
-            'tmp_name' => $tmp
+        $wp_filetype = wp_check_filetype($filename, null);
+        $attachment = array(
+            'post_mime_type' => $wp_filetype['type'],
+            'post_title' => sanitize_file_name($filename),
+            'post_content' => '',
+            'post_status' => 'inherit'
         );
 
-        $filetype = wp_check_filetype_and_ext($tmp, $file_array['name']);
-        if (!$filetype['type']) {
-            $mime = mime_content_type($tmp);
-            if (strpos($mime, 'image/') === 0) {
-                $ext = str_replace('image/', '', $mime);
-                $filetype['type'] = $mime;
-                $file_array['name'] .= '.' . $ext;
-            } else {
-                $this->logger->log("Invalid file type: " . $clean_image_url, 'error');
-                @unlink($tmp);
-                return false;
-            }
-        }
+        $attach_id = wp_insert_attachment($attachment, $file, $post_id);
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        $attach_data = wp_generate_attachment_metadata($attach_id, $file);
+        wp_update_attachment_metadata($attach_id, $attach_data);
 
-        $thumbnail_id = media_handle_sideload($file_array, $post_id, $title);
+        set_post_thumbnail($post_id, $attach_id);
 
-        @unlink($tmp);
-
-        if (is_wp_error($thumbnail_id)) {
-            $this->logger->log("Failed to add image to media library: " . $clean_image_url . ". Error: " . $thumbnail_id->get_error_message(), 'error');
-            return false;
-        }
-
-        set_post_thumbnail($post_id, $thumbnail_id);
-
-        $this->cache_image($clean_image_url, $thumbnail_id);
-
-        $this->save_image_metadata($thumbnail_id);
-
-        return $thumbnail_id;
+        return $attach_id;
     }
 
     /**
      * 从内容中获取第一张图片
+     *
+     * @param string $content 文章内容
+     * @return string|false 图片URL，未找到时返回false
      */
     private function get_first_image_from_content($content)
     {
@@ -298,79 +314,18 @@ class RSS_News_Importer_Post_Importer
     }
 
     /**
-     * 使用指数退避策略下载
-     */
-    private function download_with_exponential_backoff($url, $max_attempts = 5)
-    {
-        $attempt = 0;
-        do {
-            $tmp = download_url($url);
-            if (!is_wp_error($tmp)) {
-                return $tmp;
-            }
-            $attempt++;
-            if ($attempt < $max_attempts) {
-                sleep(pow(2, $attempt));
-            }
-        } while ($attempt < $max_attempts);
-
-        return $tmp;
-    }
-
-    /**
-     * 压缩图片
-     */
-    private function compress_image($file_path)
-    {
-        $image = wp_get_image_editor($file_path);
-        if (!is_wp_error($image)) {
-            $image->resize(1200, 1200, false);
-            $image->set_quality(85);
-            $compressed_file = $file_path . '_compressed';
-            $image->save($compressed_file);
-            return $compressed_file;
-        }
-        return false;
-    }
-
-    /**
-     * 获取缓存的图片
-     */
-    private function get_cached_image($url)
-    {
-        return get_transient('rss_importer_image_' . md5($url));
-    }
-
-    /**
-     * 缓存图片
-     */
-    private function cache_image($url, $image_id)
-    {
-        set_transient('rss_importer_image_' . md5($url), $image_id, DAY_IN_SECONDS);
-    }
-
-    /**
-     * 保存图片元数据
-     */
-    private function save_image_metadata($attachment_id)
-    {
-        $metadata = wp_get_attachment_metadata($attachment_id);
-        if (!empty($metadata['image_meta'])) {
-            update_post_meta($attachment_id, '_wp_attachment_image_exif', $metadata['image_meta']);
-        }
-    }
-
-    /**
      * 过滤内容
+     *
+     * @param string $content 原始内容
+     * @return string 过滤后的内容
      */
     private function filter_content($content)
     {
         $options = get_option($this->option_name);
         $exclusions = isset($options['content_exclusions']) ? $options['content_exclusions'] : '';
         $convert_links = isset($options['convert_links']) ? $options['convert_links'] : '';
-        $keyword_filters = isset($options['keyword_filters']) ? $options['keyword_filters'] : '';
 
-        if (empty($exclusions) && empty($convert_links) && empty($keyword_filters) && !has_filter('rss_news_importer_filter_content')) {
+        if (empty($exclusions) && empty($convert_links) && !has_filter('rss_news_importer_filter_content')) {
             return $content;
         }
 
@@ -409,191 +364,8 @@ class RSS_News_Importer_Post_Importer
             }
         }
 
-        if (!empty($keyword_filters)) {
-            $keyword_filters = explode("\n", $keyword_filters);
-            foreach ($keyword_filters as $keyword) {
-                $keyword = trim($keyword);
-                if (empty($keyword)) continue;
-                $paragraphs = $xpath->query("//p[contains(text(), '$keyword')]");
-                foreach ($paragraphs as $paragraph) {
-                    $paragraph->parentNode->removeChild($paragraph);
-                }
-            }
-        }
+        $content = $dom->saveHTML();
 
-        $content = $this->sanitize_html($dom->saveHTML());
-
-        $content = apply_filters('rss_news_importer_filter_content', $content);
-
-        return $content;
-    }
-
-    /**
-     * 净化HTML内容
-     */
-    private function sanitize_html($html)
-    {
-        $html = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', "", $html);
-        $html = preg_replace('/on\w+="[^"]*"/', '', $html);
-        $html = preg_replace('/style="[^"]*"/', '', $html);
-
-        $allowed_html = array(
-            'a' => array('href' => array(), 'title' => array()),
-            'p' => array(),
-            'br' => array(),
-            'em' => array(),
-            'strong' => array(),
-            'ul' => array(),
-            'ol' => array(),
-            'li' => array(),
-            'h1' => array(),
-            'h2' => array(),
-            'h3' => array(),
-            'h4' => array(),
-            'h5' => array(),
-            'h6' => array(),
-            'img' => array('src' => array(), 'alt' => array(), 'width' => array(), 'height' => array()),
-        );
-
-        return wp_kses($html, $allowed_html);
-    }
-
-    /**
-     * 从最新页面抓取图片
-     */
-    /**
-     * 从最新页面抓取图片
-     */
-    private function scrape_image_from_latest_pages($post_title, $post_link, $post_date, $base_url)
-    {
-        $this->logger->log("Scraping image for post: " . $post_title, 'debug');
-        $this->logger->log("Post link: " . $post_link, 'debug');
-        $this->logger->log("Post date: " . $post_date, 'debug');
-
-        for ($page = 0; $page <= 5; $page++) {
-            $url = $base_url . "/latest?page=" . $page;
-            $this->logger->log("Checking page: " . $url, 'debug');
-
-            $html = $this->fetch_page_content($url);
-
-            if (!$html) {
-                $this->logger->log("Failed to fetch content from: " . $url, 'debug');
-                continue;
-            }
-
-            $this->logger->log("Successfully fetched content from: " . $url, 'debug');
-
-            $dom = new DOMDocument();
-            @$dom->loadHTML($html);
-            $xpath = new DOMXPath($dom);
-
-            // 更新选择器以匹配 NewsBusters 的结构
-            $posts = $xpath->query("//div[contains(@class, 'views-row')]");
-            $this->logger->log("Found " . $posts->length . " posts on page", 'debug');
-
-            foreach ($posts as $post) {
-                // 更新选择器以匹配 NewsBusters 的结构
-                $title_element = $xpath->query(".//h3[contains(@class, 'views-field-field-short-title')]//div[@class='field-content']", $post)->item(0);
-                $link_element = $xpath->query(".//a[@class='card-links']", $post)->item(0);
-                $date_element = $xpath->query(".//div[contains(@class, 'views-field-created-1')]//span[@class='field-content']", $post)->item(0);
-                $image_element = $xpath->query(".//div[contains(@class, 'views-field-field-images')]//img", $post)->item(0);
-
-                if ($title_element && $link_element && $date_element) {
-                    $title = $title_element->textContent;
-                    $link = $base_url . $link_element->getAttribute('href');
-                    $date = $date_element->textContent;
-
-                    $this->logger->log("Comparing post: " . $title, 'debug');
-                    $this->logger->log("Post link: " . $link, 'debug');
-                    $this->logger->log("Post date: " . $date, 'debug');
-
-                    if ($this->is_matching_post($title, $post_title, $link, $post_link, $date, $post_date)) {
-                        $this->logger->log("Found matching post: " . $title, 'debug');
-
-                        if ($image_element) {
-                            $image_url = $image_element->getAttribute('data-src') ?: $image_element->getAttribute('src');
-                            $this->logger->log("Found image: " . $image_url, 'debug');
-                            return $image_url;
-                        } else {
-                            $this->logger->log("No image found for matching post", 'debug');
-                        }
-                    } else {
-                        $this->logger->log("Post does not match", 'debug');
-                    }
-                } else {
-                    $this->logger->log("Missing essential elements for post comparison", 'debug');
-                }
-            }
-        }
-
-        $this->logger->log("No matching post found after checking all pages", 'debug');
-        return false;
-    }
-    /**
-     * 获取页面内容
-     */
-    private function fetch_page_content($url)
-    {
-        $response = wp_remote_get($url);
-        if (is_wp_error($response)) {
-            return false;
-        }
-        return wp_remote_retrieve_body($response);
-    }
-
-
-    /**
-     * 判断是否为匹配的文章
-     */
-    private function is_matching_post($scraped_title, $post_title, $scraped_link, $post_link, $scraped_date, $post_date)
-    {
-        // 标题相似度检查
-        $title_similarity = $this->calculate_similarity($scraped_title, $post_title);
-        $this->logger->log("Title similarity: $title_similarity", 'debug');
-        $this->logger->log("Scraped title: $scraped_title", 'debug');
-        $this->logger->log("Post title: $post_title", 'debug');
-        if ($title_similarity < 0.8) {  // 80% 相似度阈值
-            $this->logger->log("Title similarity below threshold", 'debug');
-            return false;
-        }
-
-        // URL 匹配检查
-        $scraped_path = parse_url($scraped_link, PHP_URL_PATH);
-        $post_path = parse_url($post_link, PHP_URL_PATH);
-        $this->logger->log("Comparing URLs: $scraped_path vs $post_path", 'debug');
-        if ($scraped_path !== $post_path) {
-            $this->logger->log("URLs do not match", 'debug');
-            return false;
-        }
-
-        // 日期匹配检查（如果可用）
-        if ($scraped_date && $post_date) {
-            $scraped_timestamp = strtotime($scraped_date);
-            $post_timestamp = strtotime($post_date);
-            $time_difference = abs($scraped_timestamp - $post_timestamp);
-            $this->logger->log("Scraped date: $scraped_date", 'debug');
-            $this->logger->log("Post date: $post_date", 'debug');
-            $this->logger->log("Time difference: $time_difference seconds", 'debug');
-            if ($time_difference > 86400) {  // 允许1天的误差
-                $this->logger->log("Date difference exceeds threshold", 'debug');
-                return false;
-            }
-        } else {
-            $this->logger->log("Date comparison skipped due to missing data", 'debug');
-        }
-
-        $this->logger->log("Post match found", 'debug');
-        return true;
-    }
-    /**
-     * 计算字符串相似度
-     */
-    private function calculate_similarity($str1, $str2)
-    {
-        $str1 = strtolower($str1);
-        $str2 = strtolower($str2);
-        $distance = levenshtein($str1, $str2);
-        $maxLength = max(strlen($str1), strlen($str2));
-        return 1 - ($distance / $maxLength);
+        return apply_filters('rss_news_importer_filter_content', $content);
     }
 }

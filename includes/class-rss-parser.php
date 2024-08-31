@@ -1,13 +1,26 @@
 <?php
 
+// 如果直接访问此文件，则中止执行
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 class RSS_News_Importer_Parser
 {
+    private $logger;
+
+    public function __construct()
+    {
+        $this->logger = new RSS_News_Importer_Logger();
+    }
 
     // 获取并解析RSS源
     public function fetch_feed($url)
     {
+        $this->logger->log("Fetching feed: $url", 'info');
+
         $headers = array(
-            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+            'User-Agent' => 'RSS News Importer/1.0 (WordPress Plugin; ' . get_bloginfo('url') . ')',
         );
 
         $last_modified = get_option('rss_news_importer_last_modified_' . md5($url));
@@ -26,14 +39,15 @@ class RSS_News_Importer_Parser
         ));
 
         if (is_wp_error($response)) {
-            return new WP_Error('fetch_error', $response->get_error_message());
+            $this->logger->log("Error fetching feed: " . $response->get_error_message(), 'error');
+            return false;
         }
 
         $response_code = wp_remote_retrieve_response_code($response);
 
         if ($response_code === 304) {
-            // 内容未修改
-            return new WP_Error('not_modified', 'Feed content has not been modified');
+            $this->logger->log("Feed not modified since last fetch", 'info');
+            return 'not_modified';
         }
 
         $body = wp_remote_retrieve_body($response);
@@ -49,7 +63,8 @@ class RSS_News_Importer_Parser
 
         $parsed_feed = $this->parse_feed($body);
         if ($parsed_feed === false) {
-            return new WP_Error('parse_error', 'Unable to parse feed content');
+            $this->logger->log("Unable to parse feed content", 'error');
+            return false;
         }
 
         return $parsed_feed;
@@ -67,7 +82,8 @@ class RSS_News_Importer_Parser
             foreach ($errors as $error) {
                 $error_messages[] = $error->message;
             }
-            return new WP_Error('xml_parse_error', 'XML parsing failed: ' . implode(', ', $error_messages));
+            $this->logger->log("XML parsing failed: " . implode(', ', $error_messages), 'error');
+            return false;
         }
 
         $items = array();
@@ -90,7 +106,8 @@ class RSS_News_Importer_Parser
         }
 
         if (empty($items)) {
-            return new WP_Error('no_items', 'No items found in the feed');
+            $this->logger->log("No items found in the feed", 'warning');
+            return false;
         }
 
         return $items;
@@ -118,6 +135,12 @@ class RSS_News_Importer_Parser
                     return (string)$attributes['url'];
                 }
             }
+            if (isset($media->thumbnail)) {
+                $attributes = $media->thumbnail->attributes();
+                if (isset($attributes['url'])) {
+                    return (string)$attributes['url'];
+                }
+            }
         }
         return '';
     }
@@ -127,8 +150,12 @@ class RSS_News_Importer_Parser
     {
         $feed_data = $this->fetch_feed($url);
 
-        if (is_wp_error($feed_data)) {
-            return $feed_data;
+        if ($feed_data === false) {
+            return new WP_Error('fetch_error', 'Failed to fetch or parse the feed.');
+        }
+
+        if ($feed_data === 'not_modified') {
+            return new WP_Error('not_modified', 'Feed has not been modified since last fetch.');
         }
 
         $preview_items = array_slice($feed_data, 0, $limit);

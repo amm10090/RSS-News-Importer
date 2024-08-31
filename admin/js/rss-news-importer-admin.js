@@ -39,7 +39,6 @@
             this.importNowBtn.on('click', () => this.importNow());
             $('#view-logs').on('click', () => this.viewLogs());
             $('.run-now').on('click', (e) => this.runTask($(e.target)));
-            // 移除了表单提交的处理，现在由 WordPress 自动处理
         },
 
         // 初始化可排序功能
@@ -81,7 +80,7 @@
             const feedName = this.newFeedName.val().trim();
             if (!feedUrl) return;
 
-            this.ajaxRequest('rss_news_importer_add_feed', { feed_url: feedUrl, feed_name: feedName })
+            this.ajaxRequest('rss_news_importer_ajax_add_feed', { feed_url: feedUrl, feed_name: feedName })
                 .then((response) => {
                     if (response.success) {
                         const feedItem = $(response.data.html);
@@ -105,7 +104,7 @@
                 return;
             }
 
-            this.ajaxRequest('rss_news_importer_remove_feed', { feed_url: feedUrl })
+            this.ajaxRequest('rss_news_importer_ajax_remove_feed', { feed_url: feedUrl })
                 .then((response) => {
                     if (response.success) {
                         feedItem.fadeOut(() => {
@@ -127,7 +126,7 @@
                 return;
             }
 
-            this.ajaxRequest('rss_news_importer_preview_feed', { feed_url: feedUrl })
+            this.ajaxRequest('rss_news_importer_ajax_preview_feed', { feed_url: feedUrl })
                 .then((response) => {
                     if (response.success) {
                         feedItem.find('.feed-preview').html(response.data).hide().fadeIn();
@@ -141,7 +140,7 @@
         // 更新RSS源顺序
         updateFeedOrder() {
             const feedOrder = this.feedsList.sortable('toArray', { attribute: 'data-feed-url' });
-            this.ajaxRequest('rss_news_importer_update_feed_order', { order: feedOrder })
+            this.ajaxRequest('rss_news_importer_ajax_update_feed_order', { order: feedOrder })
                 .then((response) => {
                     if (response.success) {
                         this.showFeedback(response.data, 'success');
@@ -157,7 +156,7 @@
             this.importNowBtn.prop('disabled', true).text(rss_news_importer_ajax.i18n.importing_text);
             this.importProgress.show().css('width', '0%');
 
-            this.ajaxRequest('rss_news_importer_import_now', {}, {
+            this.ajaxRequest('rss_news_importer_ajax_import_now', {}, {
                 xhr: () => {
                     const xhr = new window.XMLHttpRequest();
                     xhr.upload.addEventListener('progress', (evt) => {
@@ -185,7 +184,7 @@
 
         // 查看日志
         viewLogs() {
-            this.ajaxRequest('rss_news_importer_view_logs')
+            this.ajaxRequest('rss_news_importer_ajax_view_logs')
                 .then((response) => {
                     if (response.success) {
                         $('#import-logs').html(response.data).hide().fadeIn();
@@ -214,7 +213,7 @@
             const taskName = button.data('task');
             button.prop('disabled', true).text(rss_news_importer_ajax.i18n.running_text);
 
-            this.ajaxRequest('rss_news_importer_run_task', { task_name: taskName })
+            this.ajaxRequest('rss_news_importer_ajax_run_task', { task_name: taskName })
                 .then((response) => {
                     if (response.success) {
                         this.showFeedback(response.data, 'success');
