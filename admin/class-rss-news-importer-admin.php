@@ -38,7 +38,6 @@ class RSS_News_Importer_Admin {
     private $ajax_handler;
     private $queue_manager;
     private $menu;
-    private $settings;
 
     /**
      * 构造函数

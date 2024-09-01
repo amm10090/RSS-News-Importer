@@ -85,7 +85,7 @@ class RSS_News_Importer_Post_Importer
 
         // 缓存新数据
         $this->cache->set_cached_feed($url, $rss_items);
-
+        try {
             return $this->process_feed_data($rss_items, $url, $import_limit);
         } catch (Exception $e) {
             $this->logger->log("导入RSS源失败: " . $e->getMessage(), 'error');
