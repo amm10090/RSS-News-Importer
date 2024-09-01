@@ -69,7 +69,7 @@ if (!defined('ABSPATH')) {
 
             <!-- 设置选项卡内容 -->
             <div id="settings" class="tab-pane">
-                <form method="post" action="options.php" id="rss-news-importer-form">
+             <form method="post" action="javascript:void(0);" id="rss-news-importer-form">
                     <?php
                     settings_fields($this->plugin_name);
                     do_settings_sections($this->plugin_name);

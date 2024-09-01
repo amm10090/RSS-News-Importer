@@ -13,31 +13,22 @@ require_once plugin_dir_path(__FILE__) . 'class-rss-news-importer-settings.php';
 
 class RSS_News_Importer_Admin {
     private $plugin_name;
-
-    // 插件版本
     private $version;
-
-    // 核心管理类实例
     private $core;
-
-    // 设置类实例
+    private $cron_manager;
+    private $logger;
+    private $importer;
     private $settings;
-
-    // AJAX处理类实例
     private $ajax;
-
-    // 显示类实例
     private $display;
-
-    // 选项名称
     private $option_name = 'rss_news_importer_options';
-
-    // 仪表板实例
     private $dashboard;
     private $dashboard_manager;
     private $ajax_handler;
     private $queue_manager;
     private $menu;
+    private $cache; // 确保这行存在
+
 
     /**
      * 构造函数
@@ -51,7 +42,7 @@ class RSS_News_Importer_Admin {
         $this->cron_manager = new RSS_News_Importer_Cron_Manager($plugin_name, $version);
         $this->logger = new RSS_News_Importer_Logger();
         $this->importer = new RSS_News_Importer_Post_Importer($plugin_name, $version);
-        $this->cache = new RSS_News_Importer_Cache($plugin_name, $version);
+        $this->cache = new RSS_News_Importer_Cache($this->plugin_name, $this->version); // 修复这一行
         $this->queue_manager = new RSS_News_Importer_Queue(); 
         $this->ajax_handler = new RSS_News_Importer_Admin_Ajax($this);
         $this->menu = new RSS_News_Importer_Menu($plugin_name, $version, $this);
@@ -103,21 +94,20 @@ class RSS_News_Importer_Admin {
      * 
      * @param string $hook 当前 WordPress 页面的钩子后缀
      */
-        public function enqueue_styles($hook) {
+    public function enqueue_styles($hook) {
         if (strpos($hook, $this->plugin_name) !== false) {
             wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/rss-news-importer-admin.css', array(), $this->version, 'all');
-                // 添加新的仪表盘样式
-        if (strpos($hook, $this->plugin_name) !== false) {
-        wp_enqueue_style(
-            'rss-news-importer-dashboard',
-            plugin_dir_url(__FILE__) . 'css/rss-news-importer-dashboard.css',
-            array(),
-            $this->version,
-            'all'
-        );
-    }
-    }
+            // 添加新的仪表盘样式
+            wp_enqueue_style(
+                'rss-news-importer-dashboard',
+                plugin_dir_url(__FILE__) . 'css/rss-news-importer-dashboard.css',
+                array(),
+                $this->version,
+                'all'
+            );
         }
+    }
+
     /**
      * 加载管理页面脚本
      * 
@@ -136,9 +126,9 @@ class RSS_News_Importer_Admin {
      * 加载 React 脚本
      */
     private function enqueue_react_scripts() {
-        wp_enqueue_script('react', 'https://unpkg.com/react@17.0.2/umd/react.production.min.js', array(), '17.0.2', true);
-        wp_enqueue_script('react-dom', 'https://unpkg.com/react-dom@17.0.2/umd/react-dom.production.min.js', array('react'), '17.0.2', true);
-        wp_enqueue_script('log-viewer-component', plugin_dir_url(__FILE__) . 'js/log-viewer-component.js', array('react', 'react-dom'), $this->version, true);
+        wp_enqueue_script('react', 'https://unpkg.com/react@17.0.2/umd/react.production.min.js', array(), '17.0.2', false);
+        wp_enqueue_script('react-dom', 'https://unpkg.com/react-dom@17.0.2/umd/react-dom.production.min.js', array('react'), '17.0.2', false);
+        wp_enqueue_script('log-viewer-component', plugin_dir_url(__FILE__) . 'js/log-viewer-component.js', array('react', 'react-dom'), $this->version, false);
     }
 
     /**
@@ -151,12 +141,13 @@ class RSS_News_Importer_Admin {
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('rss_news_importer_nonce'),
             'i18n' => array(
-                'add_feed_prompt' => __('Enter the URL of the RSS feed you want to add:', 'rss-news-importer'),
-                'remove_text' => __('Remove', 'rss-news-importer'),
-                'importing_text' => __('Importing...', 'rss-news-importer'),
-                'error_text' => __('An error occurred. Please try again.', 'rss-news-importer'),
-                'running_text' => __('Running...', 'rss-news-importer'),
-                'run_now_text' => __('Run Now', 'rss-news-importer')
+            'add_feed_prompt' => __('Enter the URL of the RSS feed you want to add:', 'rss-news-importer'),
+            'remove_text' => __('Remove', 'rss-news-importer'),
+            'importing_text' => __('Importing...', 'rss-news-importer'),
+            'error_text' => __('An error occurred. Please try again.', 'rss-news-importer'),
+            'running_text' => __('Running...', 'rss-news-importer'),
+            'run_now_text' => __('Run Now', 'rss-news-importer'),
+            'save_settings_nonce' => wp_create_nonce('rss_news_importer_save_settings')
             )
         );
     }

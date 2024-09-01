@@ -58,40 +58,45 @@ class RSS_News_Importer_Post_Importer
      * @return int|bool 导入的文章数量，失败时返回false
      */
     public function import_feed($url)
-    {
-        $options = get_option($this->option_name);
-        $import_limit = isset($options['import_limit']) ? intval($options['import_limit']) : 10;
+{
+    $options = get_option($this->option_name);
+    $import_limit = isset($options['import_limit']) ? intval($options['import_limit']) : 10;
 
-        // 首先检查缓存
-        $cached_data = $this->cache->get_cached_feed($url);
-        if ($cached_data !== false) {
-            $this->logger->log("Using cached data for feed: $url", 'info');
-            return $this->process_feed_data($cached_data, $url, $import_limit);
-        }
-
-        // 使用条件GET获取源
-        $rss_items = $this->parser->fetch_feed($url);
-
-            if ($rss_items === 'not_modified') {
-                $this->logger->log("RSS源未修改: $url", 'info');
-                return 0;
-            }
-
-        if (!$rss_items) {
-            $this->logger->log("Failed to fetch or parse feed: $url", 'error');
-            $this->dashboard->update_feed_status($url, false);
-            return false;
-        }
-
-        // 缓存新数据
-        $this->cache->set_cached_feed($url, $rss_items);
-        try {
-            return $this->process_feed_data($rss_items, $url, $import_limit);
-        } catch (Exception $e) {
-            $this->logger->log("导入RSS源失败: " . $e->getMessage(), 'error');
-            return new WP_Error('import_error', $e->getMessage());
-        }
+    // 首先检查缓存
+    $cached_data = $this->cache->get_cached_feed($url);
+    if ($cached_data !== false) {
+        $this->logger->log("Using cached data for feed: $url", 'info');
+        return $this->process_feed_data($cached_data, $url, $import_limit);
     }
+
+    // 使用条件GET获取源
+    $rss_items = $this->parser->fetch_feed($url);
+
+    if (is_wp_error($rss_items)) {
+        $this->logger->log("Failed to fetch or parse feed: $url - " . $rss_items->get_error_message(), 'error');
+        return false;
+    }
+
+    if ($rss_items === 'not_modified') {
+        $this->logger->log("RSS源未修改: $url", 'info');
+        return 0;
+    }
+
+    if (!is_array($rss_items)) {
+        $this->logger->log("Fetched feed is not an array: $url", 'error');
+        return false;
+    }
+
+    // 缓存新数据
+    $this->cache->set_cached_feed($url, $rss_items);
+    
+    try {
+        return $this->process_feed_data($rss_items, $url, $import_limit);
+    } catch (Exception $e) {
+        $this->logger->log("导入RSS源失败: " . $e->getMessage(), 'error');
+        return false;
+    }
+}
 
     /**
      * 处理源数据
@@ -101,72 +106,87 @@ class RSS_News_Importer_Post_Importer
      * @param int $import_limit 导入限制
      * @return int 导入的文章数量
      */
-    private function process_feed_data($rss_items, $url, $import_limit)
-    {
-        $imported_count = 0;
-        $skipped_count = 0;
-
-        foreach (array_slice($rss_items, 0, $import_limit) as $item) {
-            $result = $this->import_item($item);
-            if ($result === true) {
-                $imported_count++;
-            } elseif ($result === 'skipped') {
-                $skipped_count++;
-            }
-        }
-
-        $this->logger->log("从 $url 导入了 $imported_count 篇文章 (跳过了 $skipped_count 篇重复文章)", 'info');
-
-        return $imported_count;
+private function process_feed_data($rss_items, $url, $import_limit)
+{
+    if (!is_array($rss_items)) {
+        $this->logger->log("RSS items is not an array for feed: $url", 'error');
+        return 0;
     }
 
-    /**
-     * 导入单个项目
-     *
-     * @param array $item RSS项目
-     * @return bool|string true表示成功导入，'skipped'表示跳过，false表示失败
-     */
-    private function import_item($item)
-    {
-        $guid = $item['guid'] ?: $item['link'];
-        if ($this->post_exists($guid)) {
-            $this->logger->log("Skipped duplicate item: " . $item['title'], 'info');
-            return 'skipped';
+    $imported_count = 0;
+    $skipped_count = 0;
+
+    foreach (array_slice($rss_items, 0, $import_limit) as $item) {
+        $result = $this->import_item($item);
+        if ($result === true) {
+            $imported_count++;
+        } elseif ($result === 'skipped') {
+            $skipped_count++;
         }
-
-        $post_content = $this->filter_content($item['content'] ?: $item['description']);
-        $options = get_option($this->option_name);
-        $post_status = isset($options['post_status']) ? $options['post_status'] : 'draft';
-        $post_data = array(
-            'post_title'    => wp_strip_all_tags($item['title']),
-            'post_content'  => $post_content,
-            'post_excerpt'  => wp_trim_words($item['description'], 55, '...'),
-            'post_date'     => date('Y-m-d H:i:s', strtotime($item['pubDate'])),
-            'post_status'   => $post_status,
-            'post_author'   => $this->get_default_author(),
-            'post_type'     => 'post',
-            'post_category' => $this->get_default_category(),
-            'meta_input'    => array(
-                'rss_news_importer_guid' => $guid,
-                'rss_news_importer_link' => $item['link'],
-                'rss_news_importer_author' => $item['author'],
-                'rss_news_importer_import_date' => current_time('mysql'),
-            ),
-        );
-
-        $post_id = wp_insert_post($post_data);
-
-        if (is_wp_error($post_id)) {
-            $this->logger->log("导入项目失败: " . $item['title'] . ". 错误: " . $post_id->get_error_message(), 'error');
-            add_post_meta(0, 'rss_news_importer_import_failed', $item['title'], false);
-            return false;
-        }
-
-        $this->set_post_thumbnail($post_id, $item);
-        $this->set_post_tags($post_id, $item);
-
-        return true;
     }
+
+    $this->logger->log("从 $url 导入了 $imported_count 篇文章 (跳过了 $skipped_count 篇重复文章)", 'info');
+
+    return $imported_count;
+}
+
+/**
+ * 导入单个项目
+ *
+ * @param array $item RSS项目
+ * @return bool|string true表示成功导入，'skipped'表示跳过，false表示失败
+ */
+private function import_item($item)
+{
+    // 检查必要的键是否存在
+    if (!isset($item['title']) || !isset($item['link'])) {
+        $this->logger->log("RSS项目缺少必要的字段", 'error');
+        return false;
+    }
+
+    $guid = isset($item['guid']) ? $item['guid'] : $item['link'];
+    if ($this->post_exists($guid)) {
+        $this->logger->log("跳过重复项目: " . $item['title'], 'info');
+        return 'skipped';
+    }
+
+    $post_content = isset($item['content']) ? $item['content'] : (isset($item['description']) ? $item['description'] : '');
+    $post_content = $this->filter_content($post_content);
+
+    $options = get_option($this->option_name);
+    $post_status = isset($options['post_status']) ? $options['post_status'] : 'draft';
+
+    $post_data = array(
+        'post_title'    => wp_strip_all_tags($item['title']),
+        'post_content'  => $post_content,
+        'post_excerpt'  => isset($item['description']) ? wp_trim_words($item['description'], 55, '...') : '',
+        'post_date'     => isset($item['pubDate']) ? date('Y-m-d H:i:s', strtotime($item['pubDate'])) : current_time('mysql'),
+        'post_status'   => $post_status,
+        'post_author'   => $this->get_default_author(),
+        'post_type'     => 'post',
+        'post_category' => $this->get_default_category(),
+        'meta_input'    => array(
+            'rss_news_importer_guid' => $guid,
+            'rss_news_importer_link' => $item['link'],
+            'rss_news_importer_author' => isset($item['author']) ? $item['author'] : '',
+            'rss_news_importer_import_date' => current_time('mysql'),
+        ),
+    );
+
+    $post_id = wp_insert_post($post_data);
+
+    if (is_wp_error($post_id)) {
+        $this->logger->log("导入项目失败: " . $item['title'] . ". 错误: " . $post_id->get_error_message(), 'error');
+        add_post_meta(0, 'rss_news_importer_import_failed', $item['title'], false);
+        return false;
+    }
+
+    $this->set_post_thumbnail($post_id, $item);
+    $this->set_post_tags($post_id, $item);
+
+    $this->logger->log("成功导入文章: " . $item['title'], 'info');
+    return true;
+}
 
     /**
      * 设置文章缩略图

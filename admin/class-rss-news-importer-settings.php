@@ -21,9 +21,10 @@ class RSS_News_Importer_Settings {
     public function register_settings()
     {
         register_setting($this->plugin_name, $this->option_name, array($this, 'validate_options'));
+        // 确保cron设置也有验证函数
+        register_setting('rss_news_importer_cron_settings', 'rss_news_importer_cron_schedule', array($this, 'validate_cron_options'));
         $this->add_settings_sections();
         $this->add_settings_fields();
-        register_setting('rss_news_importer_cron_settings', 'rss_news_importer_cron_schedule');
     }
 
     // 添加设置部分
@@ -163,7 +164,7 @@ class RSS_News_Importer_Settings {
         include_once plugin_dir_path(dirname(__FILE__)) . 'admin/partials/cache-settings.php';
     }
 
-// 错误处理设置字段回调
+    // 错误处理设置字段回调
     public function error_handling_cb()
     {
         $options = get_option($this->option_name);
@@ -172,25 +173,38 @@ class RSS_News_Importer_Settings {
         include_once plugin_dir_path(dirname(__FILE__)) . 'admin/partials/error-handling.php';
     }
 
-    public function validate_options($input) {
-        $valid = array();
+    // 验证选项
+public static function validate_options($input) {
+    $valid = array();
 
-        // 验证并清理每个选项
-        $valid['rss_feeds'] = isset($input['rss_feeds']) ? $this->sanitize_rss_feeds($input['rss_feeds']) : array();
-        $valid['import_category'] = isset($input['import_category']) ? absint($input['import_category']) : 0;
-        $valid['import_author'] = isset($input['import_author']) ? absint($input['import_author']) : get_current_user_id();
-        $valid['thumb_size'] = isset($input['thumb_size']) ? sanitize_text_field($input['thumb_size']) : 'thumbnail';
-        $valid['force_thumb'] = isset($input['force_thumb']) ? 1 : 0;
-        $valid['import_limit'] = isset($input['import_limit']) ? intval($input['import_limit']) : 10;
-        $valid['content_exclusions'] = isset($input['content_exclusions']) ? sanitize_textarea_field($input['content_exclusions']) : '';
-        $valid['cache_expiration'] = isset($input['cache_expiration']) ? intval($input['cache_expiration']) : 3600;
-        $valid['error_retry'] = isset($input['error_retry']) ? intval($input['error_retry']) : 3;
-        $valid['error_notify'] = isset($input['error_notify']) ? sanitize_email($input['error_notify']) : '';
-        $valid['post_status'] = isset($input['post_status']) ? sanitize_text_field($input['post_status']) : 'draft';
+    // 验证并清理每个选项
+    $valid['rss_feeds'] = isset($input['rss_feeds']) ? self::sanitize_rss_feeds($input['rss_feeds']) : array();
+    $valid['import_category'] = isset($input['import_category']) ? absint($input['import_category']) : 0;
+    $valid['import_author'] = isset($input['import_author']) ? absint($input['import_author']) : get_current_user_id();
+    $valid['thumb_size'] = isset($input['thumb_size']) ? sanitize_text_field($input['thumb_size']) : 'thumbnail';
+    $valid['force_thumb'] = isset($input['force_thumb']) ? 1 : 0;
+    $valid['import_limit'] = isset($input['import_limit']) ? intval($input['import_limit']) : 10;
+    $valid['content_exclusions'] = isset($input['content_exclusions']) ? sanitize_textarea_field($input['content_exclusions']) : '';
+    $valid['cache_expiration'] = isset($input['cache_expiration']) ? intval($input['cache_expiration']) : 3600;
+    $valid['error_retry'] = isset($input['error_retry']) ? intval($input['error_retry']) : 3;
+    $valid['error_notify'] = isset($input['error_notify']) ? sanitize_email($input['error_notify']) : '';
+    $valid['post_status'] = isset($input['post_status']) ? sanitize_text_field($input['post_status']) : 'draft';
+
+    // 注意：这里不能使用 $this->option_name，因为这是静态方法
+    // 如果需要使用 option_name，可以将其作为参数传入或使用常量
+
+    return $valid;
+}
+
+    // 验证cron设置的函数
+    public function validate_cron_options($input) {
+        $valid = array();
+        $valid['rss_news_importer_cron_schedule'] = isset($input['rss_news_importer_cron_schedule']) ? sanitize_text_field($input['rss_news_importer_cron_schedule']) : '';
         return $valid;
     }
 
-    private function sanitize_rss_feeds($feeds) {
+    // 清理RSS源
+    private static  function sanitize_rss_feeds($feeds) {
         $sanitized_feeds = array();
         foreach ($feeds as $feed) {
             if (is_array($feed)) {

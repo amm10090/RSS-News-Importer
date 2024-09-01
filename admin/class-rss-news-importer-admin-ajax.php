@@ -11,8 +11,14 @@ class RSS_News_Importer_Admin_Ajax {
     private $logger;
     private $importer;
     private $cron_manager;
+    
+    public function generate_nonce_ajax() {
+    $nonce = wp_create_nonce('rss_news_importer_save_settings');
+    wp_send_json_success(['nonce' => $nonce]);
+}
 
     public function __construct($admin) {
+        add_action('wp_ajax_rss_news_importer_generate_nonce', array($this, 'generate_nonce_ajax'));
         $this->admin = $admin;
         $this->logger = new RSS_News_Importer_Logger();
         $this->importer = new RSS_News_Importer_Post_Importer($admin->get_plugin_name(), $admin->get_version());
@@ -186,18 +192,20 @@ public function import_now_ajax() {
 
         wp_send_json_success(__('Feed order updated successfully', 'rss-news-importer'));
     }
-
-    // AJAX处理方法: 获取日志
-    public function get_logs_ajax() {
-        $this->check_ajax_permissions();
-        $logs = $this->logger->get_logs();
-
-        if ($logs === false) {
-            wp_send_json_error('Unable to read log file');
-        } else {
+    //Ajax获取日志
+public function get_logs_ajax() {
+    $this->check_ajax_permissions();    
+    $logs = $this->logger->get_logs();
+    if (is_array($logs)) {
+        if (!empty($logs)) {
             wp_send_json_success($logs);
+        } else {
+            wp_send_json_success(array()); // 返回空数组而不是错误
         }
+    } else {
+        wp_send_json_error('Invalid log data');
     }
+}
 
     // AJAX处理方法: 清除日志
     public function clear_logs_ajax() {
@@ -223,32 +231,56 @@ public function import_now_ajax() {
 
         wp_send_json_success(__('RSS import executed successfully.', 'rss-news-importer'));
     }
-// AJAX处理方法: 保存设置
+
+  // AJAX处理方法: 保存设置
 public function save_settings_ajax() {
-    $this->check_ajax_permissions();
-    
-    error_log('RSS News Importer: Save settings Ajax request received');
-    error_log('POST data: ' . print_r($_POST, true));
+    if (!check_ajax_referer('rss_news_importer_save_settings', 'security', false)) {
+        wp_send_json_error('Nonce verification failed.');
+        return;
+    }
 
-    $option_name = $this->admin->get_option_name();
-    $options = isset($_POST[$option_name]) ? $_POST[$option_name] : array();
+    // 获取POST数据
+    $options = isset($_POST['rss_news_importer_options']) ? $_POST['rss_news_importer_options'] : array();
 
-    error_log('RSS News Importer: Options before validation: ' . print_r($options, true));
+    // 获取当前选项值
+    $current_options = get_option('rss_news_importer_options', array());
 
-    $validated_options = $this->admin->validate_options($options);
-    error_log('RSS News Importer: Validated options: ' . print_r($validated_options, true));
+    // 验证和清理选项
+    $validated_options = RSS_News_Importer_Settings::validate_options($options);
 
-    $update_result = update_option($option_name, $validated_options);
+    // 比较新旧选项
+    $diff = $this->array_diff_assoc_recursive($validated_options, $current_options);
 
-    if ($update_result) {
-        error_log('RSS News Importer: Settings saved successfully');
-        wp_send_json_success(__('Settings saved successfully', 'rss-news-importer'));
+    // 如果有变化，更新选项
+    if (!empty($diff)) {
+        $update_result = update_option('rss_news_importer_options', $validated_options);
+
+        if ($update_result) {
+            wp_send_json_success(__('Settings saved.', 'rss-news-importer'));
+        } else {
+            wp_send_json_error(__('Failed to save settings.', 'rss-news-importer'));
+        }
     } else {
-        $current_option = get_option($option_name);
-        error_log('RSS News Importer: Failed to save settings. Current option value: ' . print_r($current_option, true));
-        error_log('RSS News Importer: Difference: ' . print_r(array_diff_assoc($validated_options, $current_option), true));
-        wp_send_json_error(__('Failed to save settings', 'rss-news-importer'));
+        wp_send_json_success(__('No changes detected.', 'rss-news-importer'));
     }
 }
+// 递归比较两个数组的不同
+private function array_diff_assoc_recursive($array1, $array2) {
+    $difference = array();
+    foreach ($array1 as $key => $value) {
+        if (is_array($value)) {
+            if (!isset($array2[$key]) || !is_array($array2[$key])) {
+                $difference[$key] = $value;
+            } else {
+                $new_diff = $this->array_diff_assoc_recursive($value, $array2[$key]);
+                if (!empty($new_diff)) {
+                    $difference[$key] = $new_diff;
+                }
+            }
+        } elseif (!array_key_exists($key, $array2) || $array2[$key] !== $value) {
+            $difference[$key] = $value;
+        }
+    }
+    return $difference;
 }
-
+}

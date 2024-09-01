@@ -20,12 +20,9 @@ class RSS_News_Importer_Logger {
     }
 
     // 获取所有日志内容
-    public function get_logs() {
-        if (file_exists($this->log_file)) {
-            return file_get_contents($this->log_file);
-        }
-        return '';
-    }
+public function get_logs() {
+    return $this->parse_logs();
+}
 
     // 清除所有日志
     public function clear_logs() {
@@ -37,18 +34,21 @@ class RSS_News_Importer_Logger {
 
     // 获取最近的日志记录
     public function get_recent_logs($limit = 10, $log_types = array('error', 'warning', 'info')) {
+        $logs = $this->parse_logs();
+        return array_slice(array_filter($logs, function($log) use ($log_types) {
+            return in_array($log['type'], $log_types);
+        }), 0, $limit);
+    }
+
+    // 解析日志文件
+    private function parse_logs() {
         $logs = array();
         if (file_exists($this->log_file)) {
-            $lines = array_reverse(file($this->log_file));
-            $count = 0;
+            $lines = file($this->log_file);
             foreach ($lines as $line) {
-                if ($count >= $limit) {
-                    break;
-                }
                 $log_entry = $this->parse_log_line($line);
-                if ($log_entry && in_array($log_entry['type'], $log_types)) {
+                if ($log_entry) {
                     $logs[] = $log_entry;
-                    $count++;
                 }
             }
         }
@@ -56,7 +56,7 @@ class RSS_News_Importer_Logger {
     }
 
     // 解析单行日志
-    private function parse_log_line($line) {
+    public function parse_log_line($line) {
         $pattern = '/\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (\w+): (.+)/';
         if (preg_match($pattern, $line, $matches)) {
             return array(
@@ -78,28 +78,17 @@ class RSS_News_Importer_Logger {
 
     // 获取特定类型的日志数量
     public function get_log_count_by_type($type) {
-        $count = 0;
-        if (file_exists($this->log_file)) {
-            $lines = file($this->log_file);
-            foreach ($lines as $line) {
-                $log_entry = $this->parse_log_line($line);
-                if ($log_entry && $log_entry['type'] === strtolower($type)) {
-                    $count++;
-                }
-            }
-        }
-        return $count;
+        $logs = $this->parse_logs();
+        return count(array_filter($logs, function($log) use ($type) {
+            return $log['type'] === strtolower($type);
+        }));
     }
 
     // 获取最后一条日志记录的时间
     public function get_last_log_time() {
-        if (file_exists($this->log_file)) {
-            $lines = file($this->log_file);
-            $last_line = end($lines);
-            $log_entry = $this->parse_log_line($last_line);
-            if ($log_entry) {
-                return $log_entry['date'];
-            }
+        $logs = $this->parse_logs();
+        if (!empty($logs)) {
+            return end($logs)['date'];
         }
         return null;
     }
@@ -110,8 +99,7 @@ class RSS_News_Importer_Logger {
             return false;
         }
 
-        $logs = $this->get_logs();
-        $lines = explode("\n", trim($logs));
+        $logs = $this->parse_logs();
         $fp = fopen($file_path, 'w');
 
         if ($fp === false) {
@@ -120,11 +108,8 @@ class RSS_News_Importer_Logger {
 
         fputcsv($fp, array('Date', 'Type', 'Message'));
 
-        foreach ($lines as $line) {
-            $log_entry = $this->parse_log_line($line);
-            if ($log_entry) {
-                fputcsv($fp, array($log_entry['date'], $log_entry['type'], $log_entry['message']));
-            }
+        foreach ($logs as $log_entry) {
+            fputcsv($fp, array($log_entry['date'], $log_entry['type'], $log_entry['message']));
         }
 
         fclose($fp);
@@ -137,18 +122,18 @@ class RSS_News_Importer_Logger {
             return true;
         }
 
-        $logs = file($this->log_file);
-        $new_logs = array();
+        $logs = $this->parse_logs();
         $cutoff_date = strtotime("-$days days");
 
-        foreach ($logs as $log) {
-            $log_entry = $this->parse_log_line($log);
-            if ($log_entry && strtotime($log_entry['date']) > $cutoff_date) {
-                $new_logs[] = $log;
-            }
-        }
+        $new_logs = array_filter($logs, function($log) use ($cutoff_date) {
+            return strtotime($log['date']) > $cutoff_date;
+        });
 
-        file_put_contents($this->log_file, implode('', $new_logs));
+        $log_lines = array_map(function($log) {
+            return sprintf("[%s] %s: %s\n", $log['date'], strtoupper($log['type']), $log['message']);
+        }, $new_logs);
+
+        file_put_contents($this->log_file, implode('', $log_lines));
         return true;
     }
 }

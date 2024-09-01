@@ -1,15 +1,17 @@
 (function ($) {
     'use strict';
 
+    // 定义 rssImporter 对象
     const rssImporter = {
+        // 初始化方法
         init() {
             this.cacheDom();
             this.bindEvents();
             this.initSortable();
-            this.initTabs();
             this.loadSavedFeeds();
         },
 
+        // 缓存 DOM 元素
         cacheDom() {
             this.feedsList = $('#rss-feeds-list');
             this.addFeedBtn = $('#add-feed');
@@ -21,9 +23,9 @@
             this.importProgressText = $('.progress-text');
             this.importProgressContainer = $('.import-progress-container');
             this.form = $('#rss-news-importer-form');
-            this.logViewerRoot = $('#log-viewer-root');
         },
 
+        // 绑定事件
         bindEvents() {
             this.addFeedBtn.on('click', () => this.addFeed());
             $(document).on('click', '.remove-feed', (e) => this.removeFeed($(e.currentTarget).closest('.feed-item')));
@@ -32,6 +34,7 @@
             this.form.on('submit', (e) => this.saveSettings(e));
         },
 
+        // 初始化可排序功能
         initSortable() {
             this.feedsList.sortable({
                 handle: '.handle',
@@ -39,30 +42,23 @@
             });
         },
 
-        initTabs() {
-            $('.nav-tab-wrapper .nav-tab').on('click', function (e) {
-                e.preventDefault();
-                const target = $(this).attr('href');
-                $('.nav-tab-wrapper .nav-tab').removeClass('nav-tab-active');
-                $(this).addClass('nav-tab-active');
-                $('.tab-content .tab-pane').removeClass('active');
-                $(target).addClass('active');
-        
-                if (target === '#logs') {
-                    try {
-                        loadLogViewer();
-                    } catch (error) {
-                        console.error('Error loading LogViewer:', error);
-                        $('#log-viewer-root').html('<p class="error-message">Error: Unable to load log viewer. Please check the console for more information.</p>');
-                    }
-                }
-            });
-        },
-
+        // 加载保存的源
         loadSavedFeeds() {
             // 此方法已在PHP中实现，不需要在JS中重复
         },
 
+        // 获取 nonce
+        getNonce() {
+            return $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'rss_news_importer_generate_nonce'
+                }
+            });
+        },
+
+        // 添加新源
         addFeed() {
             const feedUrl = this.newFeedUrl.val().trim();
             const feedName = this.newFeedName.val().trim();
@@ -84,10 +80,11 @@
                 .catch(this.handleAjaxError.bind(this));
         },
 
+        // 移除源
         removeFeed(feedItem) {
             const feedUrl = feedItem.data('feed-url');
             if (!feedUrl) {
-                console.error('Feed URL not found');
+                console.error('未找到源 URL');
                 return;
             }
 
@@ -105,10 +102,11 @@
                 .catch(this.handleAjaxError.bind(this));
         },
 
+        // 预览源
         previewFeed(feedItem) {
             const feedUrl = feedItem.data('feed-url');
             if (!feedUrl) {
-                console.error('Feed URL not found');
+                console.error('未找到源 URL');
                 return;
             }
 
@@ -123,6 +121,7 @@
                 .catch(this.handleAjaxError.bind(this));
         },
 
+        // 更新源顺序
         updateFeedOrder() {
             const feedOrder = this.feedsList.sortable('toArray', { attribute: 'data-feed-url' });
             this.ajaxRequest('rss_news_importer_update_feed_order', { order: feedOrder })
@@ -136,6 +135,7 @@
                 .catch(this.handleAjaxError.bind(this));
         },
 
+        // 立即导入
         importNow() {
             this.importNowBtn.prop('disabled', true).text(rss_news_importer_ajax.i18n.importing_text);
             this.importProgressContainer.show();
@@ -174,29 +174,38 @@
                 });
         },
 
+        // 保存设置
         saveSettings(e) {
             e.preventDefault();
-            const formData = new FormData(this.form[0]);
-            formData.append('action', 'rss_news_importer_save_settings');
-            formData.append('security', rss_news_importer_ajax.nonce);
+            // 首先获取 nonce
+            this.getNonce().then((response) => {
+                if (response.success) {
+                    const formData = new FormData(this.form[0]);
+                    formData.append('action', 'rss_news_importer_save_settings');
+                    formData.append('security', response.data.nonce);
 
-            $.ajax({
-                url: rss_news_importer_ajax.ajax_url,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: (response) => {
-                    if (response.success) {
-                        this.showFeedback(response.data, 'success');
-                    } else {
-                        this.showFeedback(response.data, 'error');
-                    }
-                },
-                error: this.handleAjaxError.bind(this)
-            });
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: (response) => {
+                            if (response.success) {
+                                this.showFeedback(response.data, 'success');
+                            } else {
+                                this.showFeedback(response.data, 'error');
+                            }
+                        },
+                        error: this.handleAjaxError.bind(this)
+                    });
+                } else {
+                    this.showFeedback('Failed to generate security token.', 'error');
+                }
+            }).catch(this.handleAjaxError.bind(this));
         },
 
+        // 显示反馈信息
         showFeedback(message, type = 'success') {
             const feedback = $(`<div class="notice notice-${type} is-dismissible"><p>${message}</p></div>`);
             $('.wrap.rss-news-importer-admin').prepend(feedback);
@@ -208,6 +217,7 @@
             }, 3000);
         },
 
+        // AJAX 请求封装
         ajaxRequest(action, data = {}, options = {}) {
             const defaultData = {
                 action: action,
@@ -224,13 +234,14 @@
             return $.ajax(ajaxOptions);
         },
 
+        // 处理 AJAX 错误
         handleAjaxError(jqXHR, textStatus, errorThrown) {
-            console.error('AJAX error:', textStatus, errorThrown);
+            console.error('AJAX 错误:', textStatus, errorThrown);
             this.showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
         }
     };
 
-    // 当文档加载完成时初始化rssImporter对象
+    // 当文档加载完成时初始化 rssImporter 对象
     $(document).ready(() => {
         rssImporter.init();
     });
