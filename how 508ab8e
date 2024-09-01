@@ -1,0 +1,53 @@
+[33m6d0aa1d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: checkout: moving from main to main
+[33m6d0aa1d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{1}: checkout: moving from 4c4ac4ecb3903a85fa609768770e652ab868ec9a to main
+[33m4c4ac4e[m[33m ([m[1;33mtag: [m[1;33mv1.5.0[m[33m)[m HEAD@{2}: checkout: moving from main to v1.5.0
+[33m6d0aa1d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{3}: checkout: moving from main to main
+[33m6d0aa1d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{4}: checkout: moving from 508ab8e9ee85455eeac3ef1502c6de10cac6e26b to main
+[33m508ab8e[m HEAD@{5}: commit: = 1.6.0 =
+[33m83fbe54[m HEAD@{6}: commit: 优化立即导入样式
+[33m01b7b28[m HEAD@{7}: commit: 增加导入帖子状态设置以及对应的回调和验证方法
+[33maf04ada[m HEAD@{8}: commit: 版本 1.5.1 (发布日期: 2024-9-01)
+[33m4c4ac4e[m[33m ([m[1;33mtag: [m[1;33mv1.5.0[m[33m)[m HEAD@{9}: checkout: moving from main to 4c4ac4ecb3903a85fa609768770e652ab868ec9a
+[33m6d0aa1d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{10}: commit: 重构V1
+[33m4c4ac4e[m[33m ([m[1;33mtag: [m[1;33mv1.5.0[m[33m)[m HEAD@{11}: commit: = 1.5.0 =
+[33m599e1a6[m HEAD@{12}: commit: 修复移除和预览无效的问题
+[33mbb5faff[m[33m ([m[1;33mtag: [m[1;33mv1.4.5[m[33m)[m HEAD@{13}: commit: Version 1.4.1
+[33m05d2cc6[m HEAD@{14}: commit: 解决一处报错
+[33mafed0a0[m[33m ([m[1;33mtag: [m[1;33mv1.4.0[m[33m)[m HEAD@{15}: commit: =1.3.6 =
+[33m4d1674d[m HEAD@{16}: commit: 添加中文注释到文件中
+[33mcf4db36[m[33m ([m[1;33mtag: [m[1;33mv1.3.5[m[33m)[m HEAD@{17}: commit: == Changelog ==
+[33m0664d95[m[33m ([m[1;33mtag: [m[1;33mv1.3.1[m[33m)[m HEAD@{18}: commit: =1.3.0 =
+[33m057a87d[m[33m ([m[1;33mtag: [m[1;33mv1.2.6[m[33m)[m HEAD@{19}: commit: 使用 GUID 或链接来更准确地识别重复文章。
+[33m1273662[m[33m ([m[1;33mtag: [m[1;33mv1.2.5[m[33m)[m HEAD@{20}: commit: 1.2.5
+[33mf2306b4[m HEAD@{21}: commit: 1.2.5
+[33mca130ec[m[33m ([m[1;33mtag: [m[1;33mv1.2.4[m[33m)[m HEAD@{22}: commit: 核心测试
+[33m2bb407a[m[33m ([m[1;33mtag: [m[1;33mv1.2.3[m[33m)[m HEAD@{23}: commit: 1.2.3
+[33m8f59804[m[33m ([m[1;33mtag: [m[1;33mv1.2.2[m[33m)[m HEAD@{24}: commit: 解决菜单重复的问题
+[33m7f2cd70[m HEAD@{25}: commit: 解决菜单重复的问题
+[33m43df8ad[m[33m ([m[1;33mtag: [m[1;33mv1.2.1[m[33m)[m HEAD@{26}: commit: 1.21
+[33m05c60ea[m[33m ([m[1;33mtag: [m[1;33mv1.2.0[m[33m)[m HEAD@{27}: commit: 管理页面fix
+[33m499fc16[m[33m ([m[1;33mtag: [m[1;33mv1.1.9[m[33m)[m HEAD@{28}: commit: 设置页面优化1.19
+[33m965743e[m[33m ([m[1;33mtag: [m[1;33mv1.1.8[m[33m)[m HEAD@{29}: commit: 显示和管理 RSS 源
+[33mf3ab570[m[33m ([m[1;33mtag: [m[1;33mv1.1.7[m[33m)[m HEAD@{30}: commit: 1
+[33m204ebc2[m[33m ([m[1;33mtag: [m[1;33mv1.1.6[m[33m)[m HEAD@{31}: commit: fix: fixed some bugs
+[33m6c31ffe[m[33m ([m[1;33mtag: [m[1;33mv1.1.5[m[33m)[m HEAD@{32}: commit: 实现定时任务管理器
+[33m850f936[m[33m ([m[1;33mtag: [m[1;33mv1.1.4[m[33m)[m HEAD@{33}: commit: 基本设置
+[33mb27d107[m[33m ([m[1;33mtag: [m[1;33mv1.1.3[m[33m)[m HEAD@{34}: commit: fix 初始化
+[33m9b31de7[m[33m ([m[1;33mtag: [m[1;33mv1.1.2[m[33m)[m HEAD@{35}: commit: class-rss-news-importer.php
+[33mf330aa2[m[33m ([m[1;33mtag: [m[1;33mv1.1.1[m[33m)[m HEAD@{36}: commit: 后台设置页面
+[33mcc94f80[m[33m ([m[1;33mtag: [m[1;33mv1.1.0[m[33m)[m HEAD@{37}: commit: 12
+[33m8a3e387[m HEAD@{38}: commit: release.yml
+[33me95e544[m HEAD@{39}: commit: 工作文件更新
+[33m4037ebc[m HEAD@{40}: commit: 基础设置1.1
+[33md36b7ac[m[33m ([m[1;33mtag: [m[1;33mv1.0.9[m[33m)[m HEAD@{41}: commit: 1.0.9
+[33m9961208[m[33m ([m[1;33mtag: [m[1;33mv1.0.8[m[33m)[m HEAD@{42}: commit: 版本号
+[33m2e2886d[m[33m ([m[1;33mtag: [m[1;33mv1.0.7[m[33m)[m HEAD@{43}: commit: use变量位置更新
+[33m5cd56c3[m[33m ([m[1;33mtag: [m[1;33mv1.0.6[m[33m)[m HEAD@{44}: commit: 版本号更新
+[33m45082d4[m[33m ([m[1;33mtag: [m[1;33mv1.0.5[m[33m)[m HEAD@{45}: commit: 更新测试
+[33m6b7a4e9[m[33m ([m[1;33mtag: [m[1;33mv1.0.4[m[33m)[m HEAD@{46}: commit: 更新测试
+[33mf930e4a[m[33m ([m[1;33mtag: [m[1;33mv1.0.3[m[33m)[m HEAD@{47}: commit: 更新测试
+[33m2478a44[m[33m ([m[1;33mtag: [m[1;33mv1.0.2[m[33m)[m HEAD@{48}: commit: 工作流程输出使用中文，同时添加中文注释
+[33m9326c6d[m[33m ([m[1;33mtag: [m[1;33mv1.0.0[m[33m)[m HEAD@{49}: commit: GitHub Actions 工作流程文件
+[33ma9d13b5[m HEAD@{50}: commit: add plugin-update-checker
+[33mbdab0e0[m HEAD@{51}: commit: 创建插件的文件结构
+[33mc7a83ce[m HEAD@{52}: clone: from https://github.com/amm10090/RSS-News-Importer
