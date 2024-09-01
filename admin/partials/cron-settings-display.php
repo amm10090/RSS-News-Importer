@@ -1,104 +1,117 @@
 <?php
-// 如果直接访问此文件,则中止执行
+// 如果直接访问此文件，则中止执行
 if (!defined('ABSPATH')) {
     exit;
 }
+
+// 获取定时任务管理器实例
+$cron_manager = new RSS_News_Importer_Cron_Manager($this->plugin_name, $this->version);
+
+// 获取队列管理器实例
+$queue_manager = new RSS_News_Importer_Queue();
+
+// 获取当前定时任务设置
+$current_schedule = $cron_manager->get_current_schedule();
+$next_run = $cron_manager->get_next_scheduled_time();
+$available_schedules = $cron_manager->get_available_schedules();
+
+// 获取队列信息
+$queue_size = $queue_manager->get_queue_size();
+$max_queue_size = $queue_manager->get_max_queue_size();
+$is_queue_full = $queue_manager->is_queue_full();
+
+// 处理表单提交
+if (isset($_POST['update_cron_settings'])) {
+    check_admin_referer('rss_news_importer_cron_settings');
+    
+    $new_schedule = sanitize_text_field($_POST['cron_schedule']);
+    $cron_manager->update_schedule($new_schedule);
+    
+    $new_max_queue_size = intval($_POST['max_queue_size']);
+    $queue_manager->set_max_queue_size($new_max_queue_size);
+    
+    echo '<div class="updated"><p>设置已更新。</p></div>';
+}
+
+if (isset($_POST['clear_queue'])) {
+    check_admin_referer('rss_news_importer_clear_queue');
+    if ($queue_manager->clear_queue()) {
+        echo '<div class="updated"><p>队列已清空。</p></div>';
+    } else {
+        echo '<div class="error"><p>清空队列失败。</p></div>';
+    }
+}
+
 ?>
 
-<div class="wrap" style="max-width: 800px; margin: 20px auto; font-family: Arial, sans-serif;">
-    <h1 style="color: #23282d; font-size: 28px; border-bottom: 2px solid #23282d; padding-bottom: 10px;">
-        <?php echo esc_html(get_admin_page_title()); ?>
-    </h1>
-
-    <div style="background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-top: 20px;">
-        <form method="post" action="options.php">
-            <?php
-            settings_fields('rss_news_importer_cron_settings');
-            do_settings_sections('rss_news_importer_cron_settings');
-            ?>
-            <table class="form-table" style="width: 100%;">
-                <tr valign="top">
-                    <th scope="row" style="padding: 20px 0;">
-                        <label style="font-weight: bold; color: #23282d;"><?php _e('Update Frequency', 'rss-news-importer'); ?></label>
-                    </th>
-                    <td style="padding: 20px 0;">
-                        <select name="rss_news_importer_cron_schedule" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                            <?php foreach ($available_schedules as $key => $display) : ?>
-                                <option value="<?php echo esc_attr($key); ?>" <?php selected($current_schedule, $key); ?>><?php echo esc_html($display); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </td>
-                </tr>
-                <tr valign="top">
-                    <th scope="row" style="padding: 20px 0;">
-                        <label style="font-weight: bold; color: #23282d;"><?php _e('Next Scheduled Run', 'rss-news-importer'); ?></label>
-                    </th>
-                    <td style="padding: 20px 0;">
-                        <span style="display: inline-block; padding: 10px; background: #f1f1f1; border-radius: 4px;">
-                            <?php echo $next_run ? date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $next_run) : __('Not scheduled', 'rss-news-importer'); ?>
-                        </span>
-                    </td>
-                </tr>
-            </table>
-            <?php submit_button(__('Save Settings', 'rss-news-importer'), 'primary', 'submit', true, array('style' => 'background: #0073aa; border-color: #0073aa; box-shadow: none; text-shadow: none; transition: all 0.3s ease;')); ?>
-        </form>
-    </div>
-
-    <div style="background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-top: 20px;">
-        <h2 style="color: #23282d; font-size: 20px; margin-bottom: 15px;"><?php _e('Manual Import', 'rss-news-importer'); ?></h2>
-        <p style="margin-bottom: 20px;"><?php _e('Click the button below to manually run the RSS import process.', 'rss-news-importer'); ?></p>
-        <button id="run-import-now" class="button button-primary" style="background: #0073aa; border-color: #0073aa; box-shadow: none; text-shadow: none; padding: 10px 20px; font-size: 16px; transition: all 0.3s ease;">
-            <?php _e('Run Import Now', 'rss-news-importer'); ?>
-        </button>
-    </div>
-
-    <div id="import-status" style="background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-top: 20px; display: none;">
-        <h3 style="color: #23282d; font-size: 18px; margin-bottom: 15px;"><?php _e('Import Status', 'rss-news-importer'); ?></h3>
-        <div id="import-progress" style="padding: 15px; background: #f1f1f1; border-radius: 4px; transition: all 0.3s ease;"></div>
-    </div>
+<div class="wrap">
+    <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+    
+    <form method="post" action="">
+        <?php wp_nonce_field('rss_news_importer_cron_settings'); ?>
+        <table class="form-table">
+            <tr>
+                <th scope="row"><label for="cron_schedule">导入频率</label></th>
+                <td>
+                    <select name="cron_schedule" id="cron_schedule">
+                        <?php foreach ($available_schedules as $schedule => $display) : ?>
+                            <option value="<?php echo esc_attr($schedule); ?>" <?php selected($current_schedule, $schedule); ?>>
+                                <?php echo esc_html($display); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="max_queue_size">最大队列大小</label></th>
+                <td>
+                    <input type="number" name="max_queue_size" id="max_queue_size" value="<?php echo esc_attr($max_queue_size); ?>" min="1" step="1">
+                </td>
+            </tr>
+        </table>
+        
+        <p class="submit">
+            <input type="submit" name="update_cron_settings" class="button-primary" value="保存设置">
+        </p>
+    </form>
+    
+    <h2>队列状态</h2>
+    <p>当前队列大小: <?php echo esc_html($queue_size); ?></p>
+    <p>队列是否已满: <?php echo $is_queue_full ? '是' : '否'; ?></p>
+    
+    <form method="post" action="">
+        <?php wp_nonce_field('rss_news_importer_clear_queue'); ?>
+        <p class="submit">
+            <input type="submit" name="clear_queue" class="button-secondary" value="清空队列" onclick="return confirm('确定要清空队列吗？');">
+        </p>
+    </form>
+    
+    <h2>下次计划运行时间</h2>
+    <p>
+        <?php 
+        if ($next_run) {
+            echo '下次运行时间: ' . esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $next_run));
+        } else {
+            echo '未设置计划任务。';
+        }
+        ?>
+    </p>
+    
+    <h2>手动运行导入</h2>
+    <p>点击下面的按钮立即运行导入任务：</p>
+    <form method="post" action="">
+        <?php wp_nonce_field('rss_news_importer_run_import'); ?>
+        <p class="submit">
+            <input type="submit" name="run_import_now" class="button-secondary" value="立即运行导入">
+        </p>
+    </form>
 </div>
 
-<script type="text/javascript">
-    jQuery(document).ready(function($) {
-        $('#run-import-now').on('click', function() {
-            var button = $(this);
-            button.prop('disabled', true).css('opacity', '0.7').text('<?php _e('Running Import...', 'rss-news-importer'); ?>');
-            $('#import-status').fadeIn(300);
-            $('#import-progress').text('<?php _e('Import process started...', 'rss-news-importer'); ?>').css('background', '#fff9c4');
-
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'rss_news_importer_run_cron_now',
-                    security: '<?php echo wp_create_nonce("rss_news_importer_run_cron_now"); ?>'
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $('#import-progress').text(response.data).css('background', '#e8f5e9');
-                    } else {
-                        $('#import-progress').text('<?php _e('Error: ', 'rss-news-importer'); ?>' + response.data).css('background', '#ffebee');
-                    }
-                    button.prop('disabled', false).css('opacity', '1').text('<?php _e('Run Import Now', 'rss-news-importer'); ?>');
-                },
-                error: function() {
-                    $('#import-progress').text('<?php _e('An error occurred while running the import.', 'rss-news-importer'); ?>').css('background', '#ffebee');
-                    button.prop('disabled', false).css('opacity', '1').text('<?php _e('Run Import Now', 'rss-news-importer'); ?>');
-                }
-            });
-        });
-
-        $('form').on('submit', function() {
-            $(this).find('input[type="submit"]').css('opacity', '0.7');
-        });
-
-        $('select, input[type="submit"], #run-import-now').hover(
-            function() {
-                $(this).css('transform', 'translateY(-2px)');
-            },
-            function() {
-                $(this).css('transform', 'translateY(0)');
-            }
-        );
-    });
-</script>
+<?php
+// 处理手动运行导入
+if (isset($_POST['run_import_now'])) {
+    check_admin_referer('rss_news_importer_run_import');
+    $cron_manager->run_import_now();
+    echo '<div class="updated"><p>导入任务已手动触发。请查看日志以获取详细信息。</p></div>';
+}
+?>

@@ -1,45 +1,81 @@
+:root {
+  --primary-color: #4a90e2;
+  --secondary-color: #4a5568;
+  --background-color: #f7fafc;
+  --text-color: #2d3748;
+  --border-color: #e2e8f0;
+  --success-color: #48bb78;
+  --error-color: #f56565;
+  --hover-color: rgba(74, 144, 226, 0.1);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.5;
+}
+
 .rss-news-importer-admin {
   max-width: 1200px;
   margin: 20px auto;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .rss-importer-tabs {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  margin-bottom: 20px;
 }
 
 .nav-tab-wrapper {
-  background: #f1f1f1;
-  border-bottom: 1px solid #ccc;
+  background: #fff;
+  border-bottom: 1px solid var(--border-color);
   padding: 0;
   display: flex;
+  justify-content: center;
+  height: 40px;
 }
 
 .nav-tab {
   border: none;
   background: none;
-  padding: 15px 20px;
+  padding: 0 20px;
   font-size: 14px;
   font-weight: 500;
-  color: #555;
-  transition: all 0.3s ease;
+  color: var(--secondary-color);
+  transition: all 0.2s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 1;
   text-align: center;
 }
 
 .nav-tab-active,
 .nav-tab:hover {
-  background: #fff;
-  color: #0073aa;
-  box-shadow: inset 0 -3px 0 #0073aa;
+  color: var(--primary-color);
+}
+
+.nav-tab-active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary-color);
+}
+
+.nav-tab:hover {
+  background: var(--hover-color);
 }
 
 .tab-content {
-  padding: 30px;
+  padding: 20px 0;
 }
 
 .tab-pane {
@@ -53,19 +89,18 @@
 
 .card {
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  margin-bottom: 30px;
-  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 20px;
 }
 
 .card .title {
-  background: #f9f9f9;
-  padding: 20px;
+  padding: 15px 20px;
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 500;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color);
+  background: #f8fafc;
 }
 
 .card .inside {
@@ -76,58 +111,48 @@ input[type="text"],
 select,
 textarea {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 14px;
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease;
 }
 
 input[type="text"]:focus,
 select:focus,
 textarea:focus {
-  border-color: #0073aa;
-  box-shadow: 0 0 0 1px #0073aa;
+  border-color: var(--primary-color);
   outline: none;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
 }
 
 .button {
-  background: #f7f7f7;
-  border: 1px solid #ccc;
-  color: #555;
-  padding: 10px 15px;
+  background: var(--primary-color);
+  color: #fff;
+  padding: 8px 16px;
+  border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.button-primary {
-  background: #0073aa;
-  border-color: #0073aa;
-  color: #fff;
+  transition: background-color 0.2s ease;
+  font-size: 14px;
 }
 
 .button:hover {
-  background: #fafafa;
-  transform: translateY(-1px);
-}
-
-.button-primary:hover {
-  background: #008ec2;
+  background: #3a7cbd;
 }
 
 #rss-feeds-list .feed-item {
   display: flex;
   align-items: center;
   margin-bottom: 10px;
-  padding: 15px;
-  background: #f9f9f9;
+  padding: 12px;
+  background: #f8fafc;
   border-radius: 4px;
-  transition: all 0.3s ease;
+  transition: background-color 0.2s ease;
 }
 
 #rss-feeds-list .feed-item:hover {
-  background: #f1f1f1;
+  background: #edf2f7;
 }
 
 #rss-feeds-list .feed-item input {
@@ -135,53 +160,48 @@ textarea:focus {
   margin-right: 10px;
 }
 
-#rss-feeds-list .feed-item .handle {
-  cursor: move;
-  margin-right: 10px;
-  color: #999;
-}
-
 .rss-feed-actions {
   display: flex;
   margin-top: 15px;
+  gap: 10px;
 }
 
 .rss-feed-actions input {
   flex-grow: 1;
-  margin-right: 10px;
 }
 
 #feed-preview {
   margin-top: 20px;
-  padding: 20px;
-  background: #f9f9f9;
-  border: 1px solid #e5e5e5;
+  padding: 15px;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
 }
 
 #import-results {
   margin-top: 20px;
   padding: 15px;
-  background: #e8f6ff;
-  border: 1px solid #b8e0ff;
+  background: var(--success-color);
+  color: #fff;
   border-radius: 4px;
+  display: none;
 }
 
 .notice {
   margin: 15px 0;
-  padding: 10px 15px;
+  padding: 12px 15px;
   border-radius: 4px;
   animation: slideIn 0.3s ease;
 }
 
 .notice-success {
-  background-color: #ecf7ed;
-  border-left: 4px solid #46b450;
+  background-color: var(--success-color);
+  color: #fff;
 }
 
 .notice-error {
-  background-color: #fbeaea;
-  border-left: 4px solid #dc3232;
+  background-color: var(--error-color);
+  color: #fff;
 }
 
 @keyframes fadeIn {
@@ -204,29 +224,54 @@ textarea:focus {
   }
 }
 
-.fade-in {
-  animation: fadeIn 0.3s ease;
+.import-progress-container {
+  margin-top: 20px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
-.fade-out {
-  animation: fadeOut 0.3s ease;
+.progress-bar {
+  width: 0;
+  height: 20px;
+  background-color: var(--primary-color);
+  transition: width 0.3s ease;
+  position: relative;
+}
+.progress-text {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
 }
 
-@keyframes fadeOut {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
+.feed-preview {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
 }
 
-.feed-item-ghost {
-  opacity: 0.5;
-  background: #e1f3ff !important;
+.feed-actions {
+  display: flex;
+  gap: 10px;
 }
 
 @media (max-width: 768px) {
+  .nav-tab-wrapper {
+    flex-wrap: wrap;
+    height: auto;
+  }
+
+  .nav-tab {
+    flex: 1 0 auto;
+    padding: 10px;
+  }
+
   .rss-feed-actions {
     flex-direction: column;
   }
@@ -234,8 +279,6 @@ textarea:focus {
   .rss-feed-actions input,
   .rss-feed-actions button {
     width: 100%;
-    margin-right: 0;
-    margin-bottom: 10px;
   }
 
   #rss-feeds-list .feed-item {
@@ -246,10 +289,4 @@ textarea:focus {
     width: 100%;
     margin-bottom: 10px;
   }
-}
-.progress-bar {
-  width: 0;
-  height: 5px;
-  background-color: #0073aa;
-  transition: width 0.3s ease;
 }

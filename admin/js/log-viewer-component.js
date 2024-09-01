@@ -1,32 +1,18 @@
 (function (window, document, $) {
     const React = window.React;
     const ReactDOM = window.ReactDOM;
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useCallback } = React;
 
-    window.LogViewer = function () {
+    function LogViewer() {
         const [logs, setLogs] = useState([]);
         const [filteredLogs, setFilteredLogs] = useState([]);
         const [searchTerm, setSearchTerm] = useState('');
         const [filterType, setFilterType] = useState('all');
         const [sortOrder, setSortOrder] = useState('desc');
+        const [currentPage, setCurrentPage] = useState(1);
+        const [logsPerPage] = useState(20);
 
-        useEffect(() => {
-            fetchLogs();
-        }, []);
-
-        useEffect(() => {
-            const filtered = logs.filter(log =>
-                (filterType === 'all' || log.type.toLowerCase() === filterType) &&
-                (log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    log.date.toLowerCase().includes(searchTerm.toLowerCase()))
-            );
-            const sorted = [...filtered].sort((a, b) =>
-                sortOrder === 'asc' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date)
-            );
-            setFilteredLogs(sorted);
-        }, [logs, searchTerm, filterType, sortOrder]);
-
-        const fetchLogs = () => {
+        const fetchLogs = useCallback(() => {
             $.ajax({
                 url: rss_news_importer_ajax.ajax_url,
                 type: 'POST',
@@ -45,9 +31,27 @@
                     console.error('Ajax request failed:', error);
                 }
             });
-        };
+        }, []);
 
-        const clearlogs = () => {
+        useEffect(() => {
+            fetchLogs();
+        }, [fetchLogs]);
+
+        useEffect(() => {
+            if (Array.isArray(logs)) {
+                const filtered = logs.filter(log =>
+                    (filterType === 'all' || log.type.toLowerCase() === filterType) &&
+                    (log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        log.date.toLowerCase().includes(searchTerm.toLowerCase()))
+                );
+                const sorted = [...filtered].sort((a, b) =>
+                    sortOrder === 'asc' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date)
+                );
+                setFilteredLogs(sorted);
+                setCurrentPage(1);
+            }
+        }, [logs, searchTerm, filterType, sortOrder]);
+        const clearLogs = () => {
             if (confirm('Are you sure you want to delete all logs?')) {
                 $.ajax({
                     url: rss_news_importer_ajax.ajax_url,
@@ -86,82 +90,94 @@
                 case 'info': return '#3498db';
                 case 'debug': return '#2ecc71';
                 case 'error': return '#e74c3c';
-                default: return '#95a5a6';
+                default: return '#3498db';
             }
         };
+
+        const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+        const indexOfLastLog = currentPage * logsPerPage;
+        const indexOfFirstLog = indexOfLastLog - logsPerPage;
+        const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
 
         const styles = {
             logViewer: {
                 fontFamily: 'Arial, sans-serif',
-                maxWidth: '800px',
+                maxWidth: '100%',
                 margin: '0 auto',
                 padding: '20px',
-                backgroundColor: '#f5f5f5',
-                borderRadius: '8px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                boxSizing: 'border-box'
             },
-            controls: {
+            controlsContainer: {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '20px'
             },
             input: {
-                padding: '8px 12px',
-                borderRadius: '4px',
+                padding: '8px',
+                fontSize: '14px',
                 border: '1px solid #ddd',
-                marginRight: '10px'
+                borderRadius: '4px'
             },
             select: {
-                padding: '8px 12px',
-                borderRadius: '4px',
+                padding: '8px',
+                fontSize: '14px',
                 border: '1px solid #ddd',
-                marginRight: '10px'
+                borderRadius: '4px',
+                backgroundColor: 'white'
             },
             button: {
-                padding: '8px 12px',
-                borderRadius: '4px',
+                padding: '8px 16px',
+                fontSize: '14px',
                 border: 'none',
+                borderRadius: '4px',
                 backgroundColor: '#3498db',
                 color: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                marginLeft: '10px'
-            },
-            deleteButton: {
-                backgroundColor: '#e74c3c'
+                cursor: 'pointer'
             },
             logList: {
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px'
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                overflow: 'hidden'
             },
             logItem: {
-                backgroundColor: 'white',
-                padding: '15px',
-                borderRadius: '4px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                padding: '10px',
+                borderBottom: '1px solid #eee',
                 display: 'flex',
-                alignItems: 'center',
-                gap: '10px'
+                alignItems: 'center'
             },
             logDate: {
-                fontSize: '0.9em',
+                flexBasis: '180px',
                 color: '#7f8c8d'
             },
             logType: {
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontWeight: 'bold',
-                padding: '3px 8px',
-                borderRadius: '12px',
-                fontSize: '0.8em'
+                flexBasis: '80px',
+                textAlign: 'center',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                marginRight: '10px'
             },
             logMessage: {
                 flex: 1
+            },
+            paginationContainer: {
+                display: 'flex',
+                justifyContent: 'center',
+                marginTop: '20px'
+            },
+            paginationButton: {
+                padding: '5px 10px',
+                margin: '0 5px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                cursor: 'pointer'
+            },
+            paginationAndControlsContainer: {
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: '20px'
             }
         };
 
@@ -170,7 +186,7 @@
             { style: styles.logViewer },
             React.createElement(
                 'div',
-                { style: styles.controls },
+                { style: styles.controlsContainer },
                 React.createElement(
                     'div',
                     { style: { display: 'flex', gap: '10px' } },
@@ -193,34 +209,57 @@
                         React.createElement('option', { value: 'debug' }, '调试'),
                         React.createElement('option', { value: 'error' }, '错误')
                     )
+                )
+            ),
+            React.createElement(
+                'div',
+                { style: styles.paginationAndControlsContainer },
+                React.createElement(
+                    'div',
+                    { style: styles.paginationContainer },
+                    Array.from({ length: Math.ceil(filteredLogs.length / logsPerPage) }, (_, i) =>
+                        React.createElement(
+                            'button',
+                            {
+                                key: i,
+                                onClick: () => paginate(i + 1),
+                                style: {
+                                    ...styles.paginationButton,
+                                    backgroundColor: currentPage === i + 1 ? '#3498db' : '#f0f0f0',
+                                    color: currentPage === i + 1 ? 'white' : 'black'
+                                }
+                            },
+                            i + 1
+                        )
+                    )
                 ),
                 React.createElement(
                     'div',
-                    { style: { display: 'flex', gap: '10px' } },
+                    { style: { display: 'flex', gap: '5px' } },
                     React.createElement(
                         'button',
                         {
                             onClick: () => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'),
                             style: styles.button
                         },
-                        sortOrder === 'asc' ? '↑ 升序' : '↓ 降序'
+                        sortOrder === 'asc' ? '升序' : '降序'
                     ),
                     React.createElement(
                         'button',
                         { onClick: fetchLogs, style: styles.button },
-                        '🔄 刷新日志'
+                        '刷新日志'
                     ),
                     React.createElement(
                         'button',
-                        { onClick: clearlogs, style: { ...styles.button, ...styles.deleteButton } },
-                        '🗑️ 删除日志'
+                        { onClick: clearLogs, style: { ...styles.button, backgroundColor: '#e74c3c' } },
+                        '删除日志'
                     )
                 )
             ),
             React.createElement(
                 'div',
                 { style: styles.logList },
-                filteredLogs.map((log, index) =>
+                currentLogs.map((log, index) =>
                     React.createElement(
                         'div',
                         { key: index, style: styles.logItem },
@@ -242,5 +281,7 @@
                 )
             )
         );
-    };
+    }
+
+    window.LogViewer = LogViewer;
 })(window, document, jQuery);

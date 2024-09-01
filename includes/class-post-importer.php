@@ -21,11 +21,6 @@ class RSS_News_Importer_Post_Importer
 
     // 缓存实例
     private $cache;
-
-    // 仪表板实例
-    private $dashboard;
-
-    // 选项名称
     private $option_name = 'rss_news_importer_options';
 
     // 图片抓取器实例
@@ -41,19 +36,9 @@ class RSS_News_Importer_Post_Importer
     {
         $this->plugin_name = $plugin_name;
         $this->version = $version;
-        $this->parser = new RSS_News_Importer_Parser();
         $this->logger = new RSS_News_Importer_Logger();
         $this->cache = new RSS_News_Importer_Cache($this->plugin_name, $this->version);
-    }
-
-    /**
-     * 设置仪表板实例
-     *
-     * @param RSS_News_Importer_Dashboard $dashboard 仪表板实例
-     */
-    public function set_dashboard(RSS_News_Importer_Dashboard $dashboard)
-    {
-        $this->dashboard = $dashboard;
+        $this->parser = new RSS_News_Importer_Parser($this->logger, $this->cache);
     }
 
     /**
@@ -87,11 +72,10 @@ class RSS_News_Importer_Post_Importer
         // 使用条件GET获取源
         $rss_items = $this->parser->fetch_feed($url);
 
-        if ($rss_items === 'not_modified') {
-            $this->logger->log("Feed not modified: $url", 'info');
-            $this->dashboard->update_feed_status($url, true); // 视为成功
-            return 0;
-        }
+            if ($rss_items === 'not_modified') {
+                $this->logger->log("RSS源未修改: $url", 'info');
+                return 0;
+            }
 
         if (!$rss_items) {
             $this->logger->log("Failed to fetch or parse feed: $url", 'error');
@@ -102,7 +86,11 @@ class RSS_News_Importer_Post_Importer
         // 缓存新数据
         $this->cache->set_cached_feed($url, $rss_items);
 
-        return $this->process_feed_data($rss_items, $url, $import_limit);
+            return $this->process_feed_data($rss_items, $url, $import_limit);
+        } catch (Exception $e) {
+            $this->logger->log("导入RSS源失败: " . $e->getMessage(), 'error');
+            return new WP_Error('import_error', $e->getMessage());
+        }
     }
 
     /**
@@ -127,9 +115,7 @@ class RSS_News_Importer_Post_Importer
             }
         }
 
-        $this->logger->log("Imported $imported_count items from $url (Skipped $skipped_count duplicates)", 'info');
-        $this->dashboard->update_feed_status($url, $imported_count > 0);
-        $this->dashboard->update_import_statistics($imported_count);
+        $this->logger->log("从 $url 导入了 $imported_count 篇文章 (跳过了 $skipped_count 篇重复文章)", 'info');
 
         return $imported_count;
     }
@@ -164,13 +150,15 @@ class RSS_News_Importer_Post_Importer
                 'rss_news_importer_guid' => $guid,
                 'rss_news_importer_link' => $item['link'],
                 'rss_news_importer_author' => $item['author'],
+                'rss_news_importer_import_date' => current_time('mysql'),
             ),
         );
 
         $post_id = wp_insert_post($post_data);
 
         if (is_wp_error($post_id)) {
-            $this->logger->log("Failed to import item: " . $item['title'], 'error');
+            $this->logger->log("导入项目失败: " . $item['title'] . ". 错误: " . $post_id->get_error_message(), 'error');
+            add_post_meta(0, 'rss_news_importer_import_failed', $item['title'], false);
             return false;
         }
 
@@ -368,4 +356,200 @@ class RSS_News_Importer_Post_Importer
 
         return apply_filters('rss_news_importer_filter_content', $content);
     }
+
+    /**
+     * 净化HTML内容
+     *
+     * @param string $html HTML内容
+     * @return string 净化后的HTML
+     */
+    private function sanitize_html($html)
+    {
+        $html = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', "", $html);
+        $html = preg_replace('/on\w+="[^"]*"/', '', $html);
+        $html = preg_replace('/style="[^"]*"/', '', $html);
+
+        $allowed_html = array(
+            'a' => array('href' => array(), 'title' => array()),
+            'p' => array(),
+            'br' => array(),
+            'em' => array(),
+            'strong' => array(),
+            'ul' => array(),
+            'ol' => array(),
+            'li' => array(),
+            'h1' => array(),
+            'h2' => array(),
+            'h3' => array(),
+            'h4' => array(),
+            'h5' => array(),
+            'h6' => array(),
+            'img' => array('src' => array(), 'alt' => array(), 'width' => array(), 'height' => array()),
+        );
+
+        return wp_kses($html, $allowed_html);
+    }
+
+    /**
+     * 获取特定时期的导入数量
+     *
+     * @param string $period 时期（'today' 或 'week'）
+     * @return int 导入数量
+     */
+    public function get_imports_count_for_period($period) {
+        global $wpdb;
+        $date = '';
+        switch ($period) {
+            case 'today':
+                $date = date('Y-m-d');
+                break;
+            case 'week':
+                $date = date('Y-m-d', strtotime('-1 week'));
+                break;
+            default:
+                return 0;
+        }
+
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->postmeta} 
+            WHERE meta_key = 'rss_news_importer_import_date' 
+            AND meta_value >= %s",
+            $date
+        ));
+
+        return intval($count);
+    }
+
+    /**
+     * 获取总导入数量
+     *
+     * @return int 总导入数量
+     */
+    public function get_total_imports_count() {
+        global $wpdb;
+        $count = $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->postmeta} 
+            WHERE meta_key = 'rss_news_importer_import_date'"
+        );
+        return intval($count);
+    }
+
+    /**
+     * 获取最后导入时间
+     *
+     * @return string 最后导入时间
+     */
+    public function get_last_import_time() {
+        global $wpdb;
+        $last_import = $wpdb->get_var(
+            "SELECT meta_value FROM {$wpdb->postmeta} 
+            WHERE meta_key = 'rss_news_importer_import_date' 
+            ORDER BY meta_id DESC 
+            LIMIT 1"
+        );
+        return $last_import ? $last_import : __('Never', 'rss-news-importer');
+    }
+
+    /**
+     * 获取RSS源列表
+     *
+     * @return array RSS源列表
+     */
+    public function get_rss_feeds() {
+        $options = get_option($this->option_name);
+        return isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
+    }
+
+    /**
+     * 获取平均导入时间
+     *
+     * @return float 平均导入时间（秒）
+     */
+    public function get_average_import_time() {
+        global $wpdb;
+        $avg_time = $wpdb->get_var(
+            "SELECT AVG(TIMESTAMPDIFF(SECOND, p.post_date, pm.meta_value)) 
+            FROM {$wpdb->posts} p 
+            JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id 
+            WHERE pm.meta_key = 'rss_news_importer_import_date'"
+        );
+        return round(floatval($avg_time), 2);
+    }
+
+    /**
+     * 获取每小时导入数量
+     *
+     * @return int 每小时导入数量
+     */
+    public function get_imports_per_hour() {
+        global $wpdb;
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->postmeta} 
+            WHERE meta_key = 'rss_news_importer_import_date' 
+            AND meta_value >= %s",
+            date('Y-m-d H:i:s', strtotime('-1 hour'))
+        ));
+        return intval($count);
+    }
+
+    /**
+     * 获取每天导入数量
+     *
+     * @return int 每天导入数量
+     */
+    public function get_imports_per_day() {
+        global $wpdb;
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->postmeta} 
+            WHERE meta_key = 'rss_news_importer_import_date' 
+            AND meta_value >= %s",
+            date('Y-m-d H:i:s', strtotime('-1 day'))
+        ));
+        return intval($count);
+    }
+
+    /**
+     * 获取最近的导入
+     *
+     * @param int $limit 限制数量
+     * @return array 最近的导入列表
+     */
+    public function get_recent_imports($limit = 10) {
+        global $wpdb;
+        $recent_imports = $wpdb->get_results($wpdb->prepare(
+            "SELECT p.ID, p.post_title, pm.meta_value as import_date 
+            FROM {$wpdb->posts} p 
+            JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id 
+            WHERE pm.meta_key = 'rss_news_importer_import_date' 
+            ORDER BY pm.meta_value DESC 
+            LIMIT %d",
+            $limit
+        ));
+
+        return array_map(function($import) {
+            return array(
+                'id' => $import->ID,
+                'title' => $import->post_title,
+                'import_date' => $import->import_date
+            );
+        }, $recent_imports);
+    }
+    //成功导入数量
+    public function get_successful_imports_count() {
+    global $wpdb;
+    $count = $wpdb->get_var(
+        "SELECT COUNT(*) FROM {$wpdb->postmeta} 
+        WHERE meta_key = 'rss_news_importer_import_date'"
+    );
+    return intval($count);
+}
+//获取失败导入计数
+public function get_failed_imports_count() {
+    global $wpdb;
+    $count = $wpdb->get_var(
+        "SELECT COUNT(*) FROM {$wpdb->postmeta} 
+        WHERE meta_key = 'rss_news_importer_import_failed'"
+    );
+    return intval($count);
+}
 }

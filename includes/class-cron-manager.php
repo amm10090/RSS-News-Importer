@@ -4,7 +4,7 @@
 if (!defined('ABSPATH')) {
     exit;
 }
-
+require_once plugin_dir_path(dirname(__FILE__)) . 'admin/partials/class-rss-news-importer-dashboard.php';
 class RSS_News_Importer_Cron_Manager
 {
     private $plugin_name;
@@ -151,4 +151,65 @@ class RSS_News_Importer_Cron_Manager
             'last_run' => $last_run ? date('Y-m-d H:i:s', $last_run) : 'Never run'
         );
     }
+
+    /**
+     * 重置定时任务
+     */
+    public function reset_cron()
+    {
+        $this->unschedule_import();
+        $this->schedule_import();
+        $this->logger->log("定时任务已重置", 'info');
+    }
+
+    /**
+     * 获取所有计划任务
+     *
+     * @return array
+     */
+    public function get_all_scheduled_tasks()
+    {
+        $cron_array = _get_cron_array();
+        $tasks = array();
+
+        foreach ($cron_array as $timestamp => $cron) {
+            foreach ($cron as $hook => $dings) {
+                foreach ($dings as $key => $data) {
+                    $tasks[] = array(
+                        'hook' => $hook,
+                        'timestamp' => $timestamp,
+                        'schedule' => $data['schedule'],
+                        'args' => $data['args']
+                    );
+                }
+            }
+        }
+
+        return $tasks;
+    }
+
+    /**
+     * 清理过期的定时任务
+     */
+    public function clean_expired_crons()
+    {
+        $cron_array = _get_cron_array();
+        $current_time = time();
+        $cleaned = false;
+
+        foreach ($cron_array as $timestamp => $cron) {
+            if ($timestamp < $current_time) {
+                unset($cron_array[$timestamp]);
+                $cleaned = true;
+            }
+        }
+
+        if ($cleaned) {
+            _set_cron_array($cron_array);
+            $this->logger->log("已清理过期的定时任务", 'info');
+        }
+    }
+    public function is_wp_cron_enabled() {
+    return !(defined('DISABLE_WP_CRON') && DISABLE_WP_CRON);
+}
 }

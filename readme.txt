@@ -4,7 +4,7 @@ Donate link: https://blog.amoze.cc/donate
 Tags: rss, news, importer, feed
 Requires at least: 5.2
 Tested up to: 6.4
-Stable tag: 1.5.0
+Stable tag: 1.6.0
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -54,12 +54,20 @@ Yes, you can add as many RSS feeds as you like. Each feed can have its own impor
 No, the import process runs in the background and should not affect your website's performance.
 
 == Changelog ==
+= 1.6.0 =
+1.增加仪表盘页面支持显示各种状态，支持快速操作，支持错误日志查看
+2.修复报错和异常
+3.优化代码结构
+4.优化前端样式
+5.修复日志问题
+6.优化了国际化支持，改进了翻译文件
+
+== Upgrade Notice ==
 = 1.5.0 =
 完善RSS管理功能，支持添加、编辑和删除RSS源
 优化了国际化支持，改进了翻译文件
 修复了设置无法保存的问题
 为用户提供更好的RSS内容导入体验。
-== Upgrade Notice ==
 
 =1.4.5 =
 改进和增强

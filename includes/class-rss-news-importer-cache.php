@@ -1,174 +1,156 @@
 <?php
 
-// 如果直接访问此文件，则中止执行
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class RSS_News_Importer_Cache
-{
-    private $plugin_name;
-    private $version;
-    private $cache_expiration;
-    private $logger;
+class RSS_News_Importer_Cache {
+    private $cache_group;
+    private $expiration;
 
     /**
-     * 初始化缓存类
-     *
+     * 构造函数
+     * 
      * @param string $plugin_name 插件名称
      * @param string $version 插件版本
      */
-    public function __construct($plugin_name, $version)
-    {
-        $this->plugin_name = $plugin_name;
-        $this->version = $version;
-        $this->cache_expiration = 3600; // 默认缓存时间为1小时
-        $this->logger = new RSS_News_Importer_Logger();
+    public function __construct($plugin_name, $version) {
+        $this->cache_group = $plugin_name . '_' . $version;
+        $this->expiration = 3600; // 默认缓存时间为1小时
     }
 
     /**
-     * 获取缓存的 RSS 源数据
-     *
-     * @param string $url RSS源URL
-     * @return mixed|false 缓存的数据，如果没有缓存则返回false
+     * 获取缓存的RSS源数据
+     * 
+     * @param string $feed_url RSS源URL
+     * @return mixed 缓存的数据或false（如果缓存不存在）
      */
-    public function get_cached_feed($url)
-    {
-        $cache_key = 'rss_feed_' . md5($url);
-        $cached_data = get_transient($cache_key);
-
-        if ($cached_data !== false) {
-            $this->logger->log("Retrieved cached data for feed: $url", 'info');
-        } else {
-            $this->logger->log("No cached data found for feed: $url", 'info');
-        }
-
-        return $cached_data;
+    public function get_cached_feed($feed_url) {
+        $cache_key = $this->get_cache_key($feed_url);
+        return wp_cache_get($cache_key, $this->cache_group);
     }
 
     /**
-     * 设置缓存的 RSS 源数据
-     *
-     * @param string $url RSS源URL
+     * 设置RSS源数据的缓存
+     * 
+     * @param string $feed_url RSS源URL
      * @param mixed $data 要缓存的数据
-     * @param int|null $expiration 可选的过期时间（秒）
-     * @return bool 是否成功设置缓存
+     * @return bool 缓存是否成功设置
      */
-    public function set_cached_feed($url, $data, $expiration = null)
-    {
-        $cache_key = 'rss_feed_' . md5($url);
-        $expiration = $expiration ?: $this->cache_expiration;
-        $result = set_transient($cache_key, $data, $expiration);
-
-        if ($result) {
-            $this->logger->log("Cached data set for feed: $url", 'info');
-        } else {
-            $this->logger->log("Failed to set cache for feed: $url", 'error');
-        }
-
-        return $result;
+    public function set_cached_feed($feed_url, $data) {
+        $cache_key = $this->get_cache_key($feed_url);
+        return wp_cache_set($cache_key, $data, $this->cache_group, $this->expiration);
     }
 
     /**
-     * 删除缓存的 RSS 源数据
-     *
-     * @param string $url RSS源URL
-     * @return bool 是否成功删除缓存
+     * 删除特定RSS源的缓存
+     * 
+     * @param string $feed_url RSS源URL
+     * @return bool 缓存是否成功删除
      */
-    public function delete_cached_feed($url)
-    {
-        $cache_key = 'rss_feed_' . md5($url);
-        $result = delete_transient($cache_key);
+    public function delete_cached_feed($feed_url) {
+        $cache_key = $this->get_cache_key($feed_url);
+        return wp_cache_delete($cache_key, $this->cache_group);
+    }
 
-        if ($result) {
-            $this->logger->log("Deleted cache for feed: $url", 'info');
+    /**
+     * 清除所有缓存
+     * 
+     * @return bool 是否成功清除所有缓存
+     */
+    public function clear_all_cache() {
+        return wp_cache_flush();
+    }
+
+    /**
+     * 获取缓存使用情况
+     * 
+     * @return string 缓存使用百分比
+     */
+    public function get_cache_usage() {
+        $cache_size = $this->get_cache_size();
+        $max_cache_size = $this->get_max_cache_size();
+        $usage_percentage = ($cache_size / $max_cache_size) * 100;
+        return round($usage_percentage, 2) . '%';
+    }
+
+    /**
+     * 获取当前缓存大小
+     * 
+     * @return int 当前缓存大小（字节）
+     */
+    private function get_cache_size() {
+        global $wp_object_cache;
+        
+        if (is_object($wp_object_cache) && isset($wp_object_cache->cache)) {
+            $cache_size = strlen(serialize($wp_object_cache->cache));
         } else {
-            $this->logger->log("Failed to delete cache for feed: $url", 'warning');
+            $cache_size = 0;
         }
+        
+        return $cache_size;
+    }
 
-        return $result;
+    /**
+     * 获取最大缓存大小
+     * 
+     * @return int 最大缓存大小（字节）
+     */
+    private function get_max_cache_size() {
+        // 这里返回一个固定值，您可以根据需要调整
+        return 10 * 1024 * 1024; // 10MB
+    }
+
+    /**
+     * 生成缓存键
+     * 
+     * @param string $feed_url RSS源URL
+     * @return string 缓存键
+     */
+    private function get_cache_key($feed_url) {
+        return md5($feed_url);
     }
 
     /**
      * 设置缓存过期时间
-     *
-     * @param int $expiration 过期时间（秒）
+     * 
+     * @param int $seconds 过期时间（秒）
      */
-    public function set_cache_expiration($expiration)
-    {
-        $this->cache_expiration = intval($expiration);
-        $this->logger->log("Set cache expiration to $expiration seconds", 'info');
+    public function set_expiration($seconds) {
+        $this->expiration = $seconds;
     }
 
     /**
-     * 获取缓存过期时间
-     *
-     * @return int 当前的缓存过期时间（秒）
+     * 获取当前缓存过期时间
+     * 
+     * @return int 当前缓存过期时间（秒）
      */
-    public function get_cache_expiration()
-    {
-        return $this->cache_expiration;
+    public function get_expiration() {
+        return $this->expiration;
     }
 
     /**
-     * 清除所有缓存的 RSS 源数据
+     * 检查缓存是否已满
+     * 
+     * @return bool 缓存是否已满
      */
-    public function clear_all_cache()
-    {
-        global $wpdb;
-        $count = $wpdb->query("DELETE FROM $wpdb->options WHERE option_name LIKE '_transient_rss_feed_%' OR option_name LIKE '_transient_timeout_rss_feed_%'");
-        $this->logger->log("Cleared all RSS feed caches. $count entries removed.", 'info');
+    public function is_cache_full() {
+        $usage = $this->get_cache_usage();
+        return (float)$usage >= 90.0; // 如果使用率超过90%，认为缓存已满
     }
 
     /**
-     * 获取所有缓存的 RSS 源键
-     *
-     * @return array 所有缓存的RSS源键
+     * 获取所有缓存的键
+     * 
+     * @return array 所有缓存的键
      */
-    public function get_all_cached_feed_keys()
-    {
-        global $wpdb;
-        $keys = $wpdb->get_col("SELECT option_name FROM $wpdb->options WHERE option_name LIKE '_transient_rss_feed_%' AND option_name NOT LIKE '_transient_timeout_rss_feed_%'");
-        $keys = array_map(function($key) {
-            return str_replace('_transient_', '', $key);
-        }, $keys);
-
-        $this->logger->log("Retrieved " . count($keys) . " cached feed keys", 'info');
-        return $keys;
-    }
-
-    /**
-     * 检查缓存健康状态
-     *
-     * @return array 缓存健康状态报告
-     */
-    public function check_cache_health()
-    {
-        $keys = $this->get_all_cached_feed_keys();
-        $total_size = 0;
-        $expired_count = 0;
-        $current_time = time();
-
-        foreach ($keys as $key) {
-            $data = get_transient($key);
-            if ($data !== false) {
-                $total_size += strlen(serialize($data));
-            }
-            
-            $expiration = get_option("_transient_timeout_$key");
-            if ($expiration && $expiration < $current_time) {
-                $expired_count++;
-            }
+    public function get_all_cache_keys() {
+        global $wp_object_cache;
+        
+        if (is_object($wp_object_cache) && isset($wp_object_cache->cache[$this->cache_group])) {
+            return array_keys($wp_object_cache->cache[$this->cache_group]);
         }
-
-        $report = array(
-            'total_caches' => count($keys),
-            'total_size' => size_format($total_size, 2),
-            'expired_caches' => $expired_count
-        );
-
-        $this->logger->log("Cache health check completed. Total caches: {$report['total_caches']}, Total size: {$report['total_size']}, Expired caches: {$report['expired_caches']}", 'info');
-
-        return $report;
+        
+        return array();
     }
 }

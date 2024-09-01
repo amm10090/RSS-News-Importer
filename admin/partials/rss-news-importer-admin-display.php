@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
             <a href="#feeds" class="nav-tab nav-tab-active"><?php _e('RSS Feeds', 'rss-news-importer'); ?></a>
             <a href="#settings" class="nav-tab"><?php _e('Settings', 'rss-news-importer'); ?></a>
             <a href="#import" class="nav-tab"><?php _e('Import', 'rss-news-importer'); ?></a>
-            <a href="#logs" class="nav-tab"><?php _e('Logs', 'rss-news-importer'); ?></a>
+            <a href="#advanced" class="nav-tab"><?php _e('Advanced', 'rss-news-importer'); ?></a>
         </nav>
 
         <div class="tab-content">
@@ -94,9 +94,15 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
 
-            <!-- 日志选项卡内容 -->
-            <div id="logs" class="tab-pane">
-                <div id="log-viewer-root"></div>
+            <!-- 高级设置选项卡内容 -->
+            <div id="advanced" class="tab-pane">
+                <form method="post" action="options.php" id="rss-news-importer-advanced-form">
+                    <?php
+                    settings_fields($this->plugin_name . '_advanced');
+                    do_settings_sections($this->plugin_name . '_advanced');
+                    submit_button(__('Save Advanced Settings', 'rss-news-importer'));
+                    ?>
+                </form>
             </div>
         </div>
     </div>
@@ -115,28 +121,8 @@ if (!defined('ABSPATH')) {
             $('.tab-content .tab-pane').removeClass('active');
             $(target).addClass('active');
 
-            // 如果切换到日志选项卡，加载日志内容
-            if (target === '#logs') {
-                loadLogViewer();
-            }
         });
 
-        // 加载 LogViewer 组件
-        function loadLogViewer() {
-            if (typeof React !== 'undefined' && typeof ReactDOM !== 'undefined' && typeof LogViewer !== 'undefined') {
-                ReactDOM.render(
-                    React.createElement(LogViewer),
-                    document.getElementById('log-viewer-root')
-                );
-            } else {
-                console.error('React, ReactDOM, or LogViewer is not loaded. Make sure to enqueue these scripts.');
-                $('#log-viewer-root').html('<p class="error-message">Error: Unable to load log viewer. Please check the console for more information.</p>');
-            }
-        }
 
-        // 如果默认显示日志选项卡，则立即加载 LogViewer
-        if ($('#logs').hasClass('active')) {
-            loadLogViewer();
-        }
     });
 </script>

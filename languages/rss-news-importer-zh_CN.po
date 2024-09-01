@@ -1,84 +1,52 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: RSS News Importer\n"
-"POT-Creation-Date: 2024-08-28 12:00+0000\n"
-"PO-Revision-Date: 2024-08-28 12:00+0000\n"
+"Project-Id-Version: RSS News Importer 1.6.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/rss-news-importer\n"
+"POT-Creation-Date: 2024-09-01T12:00:00+00:00\n"
+"PO-Revision-Date: 2024-09-01T12:00:00+00:00\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 3.0\n"
-"X-Poedit-KeywordsList: __;_e;_n:1,2;_x:1,2c;_ex:1,2c;_nx:4c,1,2;esc_attr__;"
-"esc_attr_e;esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c;_n_noop:1,2;"
-"_nx_noop:3c,1,2;__ngettext_noop:1,2\n"
-"X-Poedit-Basepath: ..\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Poedit-SearchPath-0: .\n"
 
 msgid "RSS News Importer requires PHP version %s or higher. Your current version is %s."
-msgstr "RSS新闻导入器需要PHP版本 %s 或更高。您当前的版本是 %s。"
+msgstr "RSS新闻导入器需要PHP版本%s或更高。您当前的版本是%s。"
 
 msgid "RSS News Importer requires WordPress version %s or higher. Your current version is %s."
-msgstr "RSS新闻导入器需要WordPress版本 %s 或更高。您当前的版本是 %s。"
-
-msgid "RSS News Importer Dashboard"
-msgstr "RSS新闻导入器仪表板"
+msgstr "RSS新闻导入器需要WordPress版本%s或更高。您当前的版本是%s。"
 
 msgid "RSS News Importer"
 msgstr "RSS新闻导入器"
 
-msgid "RSS News Importer Error: Core class not found."
-msgstr "RSS新闻导入器错误：未找到核心类。"
+msgid "Dashboard"
+msgstr "仪表板"
 
-msgid "Feed URL"
-msgstr "源URL"
+msgid "Cron Settings"
+msgstr "定时任务设置"
 
-msgid "Last Update"
-msgstr "最后更新"
+msgid "Import Logs"
+msgstr "导入日志"
 
-msgid "Success Rate"
-msgstr "成功率"
+msgid "Settings"
+msgstr "设置"
 
-msgid "Status"
-msgstr "状态"
+msgid "Configure your RSS News Importer general settings here."
+msgstr "在此配置您的RSS新闻导入器常规设置。"
 
-msgid "Actions"
-msgstr "操作"
-
-msgid "Import Now"
-msgstr "立即导入"
-
-msgid "RSS Feed Import Failure Alert"
-msgstr "RSS源导入失败警报"
-
-msgid "The RSS feed at %s has failed to import 3 times in a row. Please check the feed and your import settings."
-msgstr "位于 %s 的RSS源连续3次导入失败。请检查源和您的导入设置。"
-
-msgid "You do not have permission to perform this action."
-msgstr "您没有权限执行此操作。"
-
-msgid "Invalid feed URL."
-msgstr "无效的源URL。"
-
-msgid "Failed to import feed."
-msgstr "导入源失败。"
-
-msgid "Successfully imported %d items."
-msgstr "成功导入 %d 个项目。"
+msgid "Configure advanced settings for RSS News Importer. Be cautious when changing these settings."
+msgstr "配置RSS新闻导入器的高级设置。更改这些设置时请谨慎。"
 
 msgid "General Settings"
 msgstr "常规设置"
 
-msgid "Configure your RSS News Importer settings here."
-msgstr "在此配置您的RSS新闻导入器设置。"
+msgid "Advanced Settings"
+msgstr "高级设置"
 
 msgid "RSS Feeds"
 msgstr "RSS源"
-
-msgid "Update Frequency"
-msgstr "更新频率"
 
 msgid "Import Options"
 msgstr "导入选项"
@@ -89,8 +57,17 @@ msgstr "缩略图设置"
 msgid "Import Limit"
 msgstr "导入限制"
 
+msgid "Post Status"
+msgstr "文章状态"
+
 msgid "Content Exclusions"
 msgstr "内容排除"
+
+msgid "Cache Settings"
+msgstr "缓存设置"
+
+msgid "Error Handling"
+msgstr "错误处理"
 
 msgid "No RSS feeds added yet."
 msgstr "尚未添加RSS源。"
@@ -98,11 +75,11 @@ msgstr "尚未添加RSS源。"
 msgid "Feed Name (optional)"
 msgstr "源名称（可选）"
 
-msgid "Remove"
-msgstr "移除"
-
 msgid "Preview"
 msgstr "预览"
+
+msgid "Remove"
+msgstr "移除"
 
 msgid "Enter new feed URL"
 msgstr "输入新的源URL"
@@ -110,259 +87,32 @@ msgstr "输入新的源URL"
 msgid "Enter feed name (optional)"
 msgstr "输入源名称（可选）"
 
-msgid "Add New Feed"
-msgstr "添加新源"
+msgid "Add Feed"
+msgstr "添加源"
 
-msgid "Hourly"
-msgstr "每小时"
+msgid "Import Now"
+msgstr "立即导入"
 
-msgid "Twice Daily"
-msgstr "每天两次"
+msgid "Save Advanced Settings"
+msgstr "保存高级设置"
 
-msgid "Daily"
-msgstr "每天"
+msgid "Thumbnail"
+msgstr "缩略图"
 
-msgid "Weekly"
-msgstr "每周"
+msgid "Medium"
+msgstr "中等"
 
-msgid "Next scheduled run: %s"
-msgstr "下次计划运行：%s"
+msgid "Large"
+msgstr "大"
 
-msgid "Default Category:"
-msgstr "默认分类："
-
-msgid "Select a category"
-msgstr "选择一个分类"
-
-msgid "Default Author:"
-msgstr "默认作者："
-
-msgid "Thumbnail Size:"
-msgstr "缩略图大小："
+msgid "Full Size"
+msgstr "完整尺寸"
 
 msgid "Force thumbnail generation"
 msgstr "强制生成缩略图"
 
 msgid "Limit the number of posts to import per feed."
 msgstr "限制每个源导入的文章数量。"
-
-msgid "Enter CSS selectors or text patterns to exclude, one per line."
-msgstr "输入要排除的CSS选择器或文本模式，每行一个。"
-
-msgid "Settings Saved"
-msgstr "设置已保存"
-
-msgid "General"
-msgstr "常规"
-
-msgid "RSS Feeds"
-msgstr "RSS源"
-
-msgid "Import"
-msgstr "导入"
-
-msgid "Logs"
-msgstr "日志"
-
-msgid "Manage RSS Feeds"
-msgstr "管理RSS源"
-
-msgid "Add Feed"
-msgstr "添加源"
-
-msgid "Click the button below to manually import posts from all configured RSS feeds."
-msgstr "点击下面的按钮手动从所有配置的RSS源导入文章。"
-
-msgid "Unauthorized user"
-msgstr "未授权用户"
-
-msgid "Imported %d posts from %s"
-msgstr "从 %2$s 导入了 %1$d 篇文章"
-
-msgid "Invalid feed URL"
-msgstr "无效的源URL"
-
-msgid "Feed added successfully"
-msgstr "源添加成功"
-
-msgid "Failed to save feed"
-msgstr "保存源失败"
-
-msgid "Feed removed successfully"
-msgstr "源移除成功"
-
-msgid "Error fetching feed"
-msgstr "获取源时出错"
-
-msgid "Invalid feed order"
-msgstr "无效的源顺序"
-
-msgid "Feed order updated successfully"
-msgstr "源顺序更新成功"
-
-msgid "Date"
-msgstr "日期"
-
-msgid "Message"
-msgstr "消息"
-
-msgid "Type"
-msgstr "类型"
-
-msgid "Search logs..."
-msgstr "搜索日志..."
-
-msgid "All types"
-msgstr "所有类型"
-
-msgid "Info"
-msgstr "信息"
-
-msgid "Debug"
-msgstr "调试"
-
-msgid "Error"
-msgstr "错误"
-
-msgid "Ascending"
-msgstr "升序"
-
-msgid "Descending"
-msgstr "降序"
-
-msgid "Refresh Logs"
-msgstr "刷新日志"
-
-msgid "Delete Logs"
-msgstr "删除日志"
-
-msgid "Are you sure you want to delete all logs?"
-msgstr "您确定要删除所有日志吗？"
-
-msgid "All logs have been deleted."
-msgstr "所有日志已被删除。"
-
-msgid "Failed to delete logs: %s"
-msgstr "删除日志失败：%s"
-
-msgid "Failed to delete logs. Please try again."
-msgstr "删除日志失败。请重试。"
-
-msgid "Enter the URL of the RSS feed you want to add:"
-msgstr "输入您想添加的RSS源的URL："
-
-msgid "Importing..."
-msgstr "正在导入..."
-
-msgid "An error occurred. Please try again."
-msgstr "发生错误。请重试。"
-
-msgid "Dashboard"
-msgstr "仪表板"
-
-msgid "Cron Settings"
-msgstr "定时任务设置"
-
-msgid "Task Scheduler"
-msgstr "任务调度器"
-
-msgid "Next Scheduled Run"
-msgstr "下次计划运行"
-
-msgid "Not scheduled"
-msgstr "未计划"
-
-msgid "Save Settings"
-msgstr "保存设置"
-
-msgid "Manual Import"
-msgstr "手动导入"
-
-msgid "Run Import Now"
-msgstr "立即运行导入"
-
-msgid "Import Status"
-msgstr "导入状态"
-
-msgid "Import process started..."
-msgstr "导入过程已开始..."
-
-msgid "Running Import..."
-msgstr "正在运行导入..."
-
-msgid "Error: "
-msgstr "错误："
-
-msgid "An error occurred while running the import."
-msgstr "运行导入时发生错误。"
-
-msgid "RSS import executed successfully."
-msgstr "RSS导入成功执行。"
-
-msgid "Task Name"
-msgstr "任务名称"
-
-msgid "Frequency"
-msgstr "频率"
-
-msgid "Next Run"
-msgstr "下次运行"
-
-msgid "Edit"
-msgstr "编辑"
-
-msgid "Delete"
-msgstr "删除"
-
-msgid "Run Now"
-msgstr "立即运行"
-
-msgid "Add New Task"
-msgstr "添加新任务"
-
-msgid "Edit Task"
-msgstr "编辑任务"
-
-msgid "Are you sure you want to delete this task?"
-msgstr "您确定要删除此任务吗？"
-
-msgid "Task executed successfully"
-msgstr "任务成功执行"
-
-msgid "Failed to execute task"
-msgstr "执行任务失败"
-
-msgid "Invalid task name"
-msgstr "无效的任务名称"
-
-msgid "Task added successfully"
-msgstr "任务添加成功"
-
-msgid "Failed to add task"
-msgstr "添加任务失败"
-
-msgid "Task updated successfully"
-msgstr "任务更新成功"
-
-msgid "Failed to update task"
-msgstr "更新任务失败"
-
-msgid "Task deleted successfully"
-msgstr "任务删除成功"
-
-msgid "Failed to delete task"
-msgstr "删除任务失败"
-msgid "Once Weekly"
-msgstr "每周一次"
-
-msgid "Once a month"
-msgstr "每月一次"
-
-msgid "Custom"
-msgstr "自定义"
-
-msgid "Post Status:"
-msgstr "文章状态："
 
 msgid "Draft"
 msgstr "草稿"
@@ -376,147 +126,230 @@ msgstr "待审核"
 msgid "Choose the status for imported posts."
 msgstr "选择导入文章的状态。"
 
-msgid "RSS News Importer Settings"
-msgstr "RSS新闻导入器设置"
+msgid "Enter CSS selectors or text patterns to exclude, one per line."
+msgstr "输入要排除的CSS选择器或文本模式，每行一个。"
 
-msgid "Save Changes"
-msgstr "保存更改"
+msgid "Cache expiration time in seconds. Set to 0 to disable caching."
+msgstr "缓存过期时间（秒）。设置为0以禁用缓存。"
 
-msgid "Feed successfully imported"
-msgstr "源成功导入"
+msgid "Number of retry attempts for failed imports."
+msgstr "失败导入的重试次数。"
 
-msgid "Failed to import feed"
-msgstr "导入源失败"
+msgid "Email address to notify on import errors. Leave blank to disable notifications."
+msgstr "导入错误时通知的电子邮件地址。留空以禁用通知。"
 
-msgid "Are you sure you want to remove this feed?"
-msgstr "您确定要移除这个源吗？"
+msgid "Hourly"
+msgstr "每小时"
 
-msgid "Refresh Feed List"
-msgstr "刷新源列表"
+msgid "Twice Daily"
+msgstr "每天两次"
 
-msgid "Last Import"
-msgstr "上次导入"
+msgid "Daily"
+msgstr "每天"
 
-msgid "Next Import"
-msgstr "下次导入"
+msgid "Once Weekly"
+msgstr "每周一次"
+
+msgid "Once a month"
+msgstr "每月一次"
+
+msgid "You do not have sufficient permissions to access this page."
+msgstr "您没有足够的权限访问此页面。"
+
+msgid "Import Statistics"
+msgstr "导入统计"
+
+msgid "Today's Imports:"
+msgstr "今日导入："
+
+msgid "This Week's Imports:"
+msgstr "本周导入："
+
+msgid "Total Imports:"
+msgstr "总导入："
+
+msgid "Last Import Time:"
+msgstr "最后导入时间："
 
 msgid "Never"
-msgstr "从不"
+msgstr "从未"
 
-msgid "RSS News Importer Log"
-msgstr "RSS新闻导入器日志"
+msgid "Import Queue Status"
+msgstr "导入队列状态"
 
-msgid "Clear Log"
-msgstr "清除日志"
+msgid "Current Queue Items:"
+msgstr "当前队列项目数："
 
-msgid "Log cleared successfully"
-msgstr "日志成功清除"
+msgid "Queue Capacity Usage:"
+msgstr "队列容量使用："
 
-msgid "Failed to clear log"
-msgstr "清除日志失败"
+msgid "Next Scheduled Run:"
+msgstr "下次计划执行："
 
-msgid "No logs found"
-msgstr "未找到日志"
+msgid "Not Scheduled"
+msgstr "未计划"
 
-msgid "Imported Articles"
-msgstr "已导入文章"
+msgid "System Status"
+msgstr "系统状态"
 
-msgid "View Imported Articles"
-msgstr "查看已导入文章"
+msgid "WordPress Cron Status:"
+msgstr "WordPress Cron状态："
 
-msgid "RSS News Importer Statistics"
-msgstr "RSS新闻导入器统计"
+msgid "Cache Usage:"
+msgstr "缓存使用情况："
 
-msgid "Total Feeds"
-msgstr "总源数"
+msgid "Log File Size:"
+msgstr "日志文件大小："
 
-msgid "Total Imported Articles"
-msgstr "总导入文章数"
+msgid "Unknown"
+msgstr "未知"
 
-msgid "Last Import Time"
-msgstr "上次导入时间"
+msgid "Performance Metrics"
+msgstr "性能指标"
 
-msgid "Settings"
-msgstr "设置"
+msgid "Average Import Time:"
+msgstr "平均导入时间："
 
-msgid "Help"
-msgstr "帮助"
+msgid "seconds"
+msgstr "秒"
 
-msgid "About"
-msgstr "关于"
+msgid "Imports Per Hour:"
+msgstr "每小时导入数量："
 
-msgid "Version"
-msgstr "版本"
+msgid "Imports Per Day:"
+msgstr "每天导入数量："
 
-msgid "Author"
-msgstr "作者"
+msgid "Quick Actions"
+msgstr "快速操作"
 
-msgid "Support"
-msgstr "支持"
+msgid "Run Import Now"
+msgstr "立即运行导入"
 
-msgid "Documentation"
-msgstr "文档"
+msgid "Clear Queue"
+msgstr "清空队列"
 
-msgid "Donate"
-msgstr "捐赠"
-msgid "Connection error"
-msgstr "连接错误"
+msgid "Reset All Feeds"
+msgstr "重置所有源"
 
-msgid "Parse error"
-msgstr "解析错误"
+msgid "Clear Logs"
+msgstr "清理日志"
 
-msgid "Active"
-msgstr "活跃"
+msgid "System Information"
+msgstr "系统信息"
 
-msgid "Inactive"
-msgstr "非活跃"
+msgid "PHP Version:"
+msgstr "PHP版本："
 
-msgid "Paused"
-msgstr "已暂停"
-msgid "Advanced Settings"
-msgstr "高级设置"
+msgid "WordPress Version:"
+msgstr "WordPress版本："
 
-msgid "Post Status:"
-msgstr "文章状态："
+msgid "Plugin Version:"
+msgstr "插件版本："
 
-msgid "Published"
-msgstr "已发布"
+msgid "Memory Limit:"
+msgstr "内存限制："
 
-msgid "Draft"
-msgstr "草稿"
+msgid "Max Execution Time:"
+msgstr "最大执行时间："
 
-msgid "Pending Review"
-msgstr "等待审核"
-msgid "Refresh Feed"
-msgstr "刷新源"
+msgid "RSS Feed Status"
+msgstr "RSS源状态"
 
-msgid "Last Import"
-msgstr "上次导入"
+msgid "Active RSS Feeds Count:"
+msgstr "活跃的RSS源数量："
 
-msgid "Total Imported"
-msgstr "总计导入"
+msgid "Feed URL"
+msgstr "源URL"
 
-msgid "Import Failed"
-msgstr "导入失败"
-msgid "Are you sure you want to remove this feed?"
-msgstr "您确定要移除这个源吗？"
+msgid "Health Status"
+msgstr "健康状态"
 
-msgid "Changes saved successfully."
-msgstr "更改已成功保存。"
+msgid "Last Update"
+msgstr "上次更新"
 
-msgid "No changes were made."
-msgstr "没有进行任何更改。"
-msgid "Export Settings"
-msgstr "导出设置"
+msgid "Recent Imports"
+msgstr "最近导入"
 
-msgid "Import Settings"
-msgstr "导入设置"
+msgid "Recently Imported Articles"
+msgstr "最近导入的文章"
 
-msgid "Reset to Default"
-msgstr "重置为默认值"
+msgid "No recently imported articles."
+msgstr "暂无最近导入的文章。"
 
-msgid "Support"
-msgstr "支持"
+msgid "Recent Errors and Warnings"
+msgstr "最近的错误和警告"
 
-msgid "Documentation"
-msgstr "文档"
+msgid "No recent errors or warnings."
+msgstr "暂无最近的错误和警告。"
+
+msgid "Import task completed. Please check the logs for details."
+msgstr "导入任务已完成。请查看日志了解详情。"
+
+msgid "Queue cleared."
+msgstr "队列已清空。"
+
+msgid "Failed to clear queue."
+msgstr "清空队列失败。"
+
+msgid "All RSS feeds have been reset."
+msgstr "所有RSS源已重置。"
+
+msgid "Failed to reset RSS feeds."
+msgstr "重置RSS源失败。"
+
+msgid "Logs cleared."
+msgstr "日志已清理。"
+
+msgid "Failed to clear logs."
+msgstr "清理日志失败。"
+
+msgid "Invalid feed URL"
+msgstr "无效的源URL"
+
+msgid "Feed added successfully"
+msgstr "源添加成功"
+
+msgid "Failed to save feed"
+msgstr "保存源失败"
+
+msgid "Feed removed successfully"
+msgstr "源移除成功"
+
+msgid "Failed to remove feed"
+msgstr "移除源失败"
+
+msgid "Invalid feed order"
+msgstr "无效的源顺序"
+
+msgid "Feed order updated successfully"
+msgstr "源顺序更新成功"
+
+msgid "Unable to read log file"
+msgstr "无法读取日志文件"
+
+msgid "All logs have been deleted."
+msgstr "所有日志已被删除。"
+
+msgid "Failed to delete logs."
+msgstr "删除日志失败。"
+
+msgid "You do not have permission to perform this action."
+msgstr "您没有执行此操作的权限。"
+
+msgid "RSS import executed successfully."
+msgstr "RSS导入成功执行。"
+
+msgid "Settings saved successfully"
+msgstr "设置保存成功"
+
+msgid "Failed to save settings"
+msgstr "保存设置失败"
+
+msgid "Error importing from %s: %s"
+msgstr "从%s导入时出错：%s"
+
+msgid "Imported %d posts from %s"
+msgstr "从%s导入了%d篇文章"
+
+msgid "Read More"
+msgstr "阅读更多"
