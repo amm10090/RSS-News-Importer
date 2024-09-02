@@ -33,7 +33,6 @@ class RSS_News_Importer_Loader {
      */
     public function add_action($hook, $component, $callback, $priority = 10, $accepted_args = 1) {
         $this->actions = $this->add($this->actions, $hook, $component, $callback, $priority, $accepted_args);
-        $this->logger->log("Action added: $hook", 'debug');
     }
 
     /**
@@ -47,7 +46,6 @@ class RSS_News_Importer_Loader {
      */
     public function add_filter($hook, $component, $callback, $priority = 10, $accepted_args = 1) {
         $this->filters = $this->add($this->filters, $hook, $component, $callback, $priority, $accepted_args);
-        $this->logger->log("Filter added: $hook", 'debug');
     }
 
     /**
@@ -59,7 +57,6 @@ class RSS_News_Importer_Loader {
      */
     public function add_shortcode($tag, $component, $callback) {
         $this->shortcodes = $this->add($this->shortcodes, $tag, $component, $callback, 0, 0);
-        $this->logger->log("Shortcode added: $tag", 'debug');
     }
 
     /**
@@ -100,8 +97,6 @@ class RSS_News_Importer_Loader {
         foreach ($this->shortcodes as $shortcode) {
             add_shortcode($shortcode['hook'], array($shortcode['component'], $shortcode['callback']));
         }
-
-        $this->logger->log("All hooks and shortcodes registered", 'info');
     }
 
     /**
@@ -140,7 +135,6 @@ class RSS_News_Importer_Loader {
      */
     public function remove_action($hook, $component, $callback) {
         $this->actions = $this->remove($this->actions, $hook, $component, $callback);
-        $this->logger->log("Action removed: $hook", 'debug');
     }
 
     /**
@@ -152,7 +146,6 @@ class RSS_News_Importer_Loader {
      */
     public function remove_filter($hook, $component, $callback) {
         $this->filters = $this->remove($this->filters, $hook, $component, $callback);
-        $this->logger->log("Filter removed: $hook", 'debug');
     }
 
     /**

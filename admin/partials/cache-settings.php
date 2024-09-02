@@ -14,17 +14,27 @@ $cache_expiration = isset($options['cache_expiration']) ? intval($options['cache
 </p>
 <p class="description"><?php _e('设置RSS源数据的缓存时间。0表示不使用缓存。', 'rss-news-importer'); ?></p>
 
-<?php
-//可以在这里添加一个清理缓存的按钮
-?>
 <p>
     <button type="button" id="clear_cache" class="button"><?php _e('清理缓存', 'rss-news-importer'); ?></button>
 </p>
 <script>
     jQuery(document).ready(function($) {
         $('#clear_cache').on('click', function() {
-            // 这里添加AJAX请求来清理缓存
-            alert('缓存清理功能尚未实现');
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'rss_news_importer_clear_cache',
+                    security: '<?php echo wp_create_nonce('rss_news_importer_clear_cache'); ?>'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('<?php _e('缓存已清理', 'rss-news-importer'); ?>');
+                    } else {
+                        alert('<?php _e('清理缓存失败', 'rss-news-importer'); ?>');
+                    }
+                }
+            });
         });
     });
 </script>

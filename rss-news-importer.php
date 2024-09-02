@@ -12,7 +12,7 @@
  * Plugin Name:       RSS News Importer
  * Plugin URI:        https://blog.amoze.cc/rss-news-importer
  * Description:       Import news articles from RSS feeds into WordPress posts.
- * Version:           1.6.0
+ * Version:          2.0.0
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            HuaYangTian
@@ -27,8 +27,12 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+//加载Simple HTML DOM Parser库
+if (!class_exists('simple_html_dom')) {
+    require_once plugin_dir_path(__FILE__) . 'libs/simple_html_dom.php';
+}
 // 定义插件常量
-define('RSS_NEWS_IMPORTER_VERSION', '1.6.0');
+define('RSS_NEWS_IMPORTER_VERSION', '2.0.0');
 define('RSS_NEWS_IMPORTER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RSS_NEWS_IMPORTER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -45,7 +49,8 @@ require_once RSS_NEWS_IMPORTER_PLUGIN_DIR . 'includes/class-queue.php';
 /**
  * 检查PHP和WordPress版本要求
  */
-function rss_news_importer_check_requirements() {
+function rss_news_importer_check_requirements()
+{
     $php_version = phpversion();
     $wp_version = get_bloginfo('version');
     $php_min_version = '7.2';
@@ -73,7 +78,8 @@ function rss_news_importer_check_requirements() {
 /**
  * 开始执行插件
  */
-function run_rss_news_importer() {
+function run_rss_news_importer()
+{
     if (!rss_news_importer_check_requirements()) {
         return;
     }
@@ -98,7 +104,8 @@ add_action('plugins_loaded', 'run_rss_news_importer');
 /**
  * 设置插件更新检查器
  */
-function setup_rss_news_importer_updater() {
+function setup_rss_news_importer_updater()
+{
     if (file_exists(__DIR__ . '/plugin-update-checker/plugin-update-checker.php')) {
         require_once __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
 
@@ -115,6 +122,8 @@ function setup_rss_news_importer_updater() {
         $myUpdateChecker->getVcsApi()->enableReleaseAssets();
     }
 }
-
+if (!class_exists('simple_html_dom')) {
+    require_once plugin_dir_path(__FILE__) . 'libs/simple_html_dom.php';
+}
 // 初始化插件更新检查器
 add_action('plugins_loaded', 'setup_rss_news_importer_updater');

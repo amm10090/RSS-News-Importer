@@ -353,3 +353,162 @@ msgstr "从%s导入了%d篇文章"
 
 msgid "Read More"
 msgstr "阅读更多"
+
+msgid "Manually ran import task"
+msgstr "手动运行导入任务"
+
+msgid "Log Viewer"
+msgstr "日志查看器"
+
+msgid "Search logs..."
+msgstr "搜索日志..."
+
+msgid "All Levels"
+msgstr "所有级别"
+
+msgid "Info"
+msgstr "信息"
+
+msgid "Warning"
+msgstr "警告"
+
+msgid "Error"
+msgstr "错误"
+
+msgid "Pause Refresh"
+msgstr "暂停刷新"
+
+msgid "Resume Refresh"
+msgstr "恢复刷新"
+
+msgid "Dark Mode"
+msgstr "暗黑模式"
+
+msgid "Light Mode"
+msgstr "明亮模式"
+
+msgid "Sort by Date"
+msgstr "按日期排序"
+
+msgid "Export CSV"
+msgstr "导出CSV"
+
+msgid "Export JSON"
+msgstr "导出JSON"
+
+msgid "Statistics"
+msgstr "统计"
+
+msgid "Total Logs:"
+msgstr "总日志数："
+
+msgid "Errors:"
+msgstr "错误："
+
+msgid "Warnings:"
+msgstr "警告："
+
+msgid "Info Logs:"
+msgstr "信息日志："
+
+msgid "Load More"
+msgstr "加载更多"
+
+msgid "Are you sure you want to clear all logs? This action cannot be undone."
+msgstr "您确定要清除所有日志吗？此操作无法撤消。"
+
+msgid "Logs cleared successfully"
+msgstr "日志清除成功"
+
+msgid "Failed to clear logs"
+msgstr "清除日志失败"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "WP Debug Mode:"
+msgstr "WP调试模式："
+
+msgid "WP Cron:"
+msgstr "WP定时任务："
+
+msgid "Good"
+msgstr "良好"
+
+msgid "Warning"
+msgstr "警告"
+
+msgid "Critical"
+msgstr "严重"
+
+msgid "Cache cleared successfully"
+msgstr "缓存清理成功"
+
+msgid "Failed to clear cache"
+msgstr "清理缓存失败"
+
+msgid "View Error Log"
+msgstr "查看错误日志"
+
+msgid "Custom"
+msgstr "自定义"
+
+msgid "Custom Interval (minutes)"
+msgstr "自定义间隔（分钟）"
+
+msgid "Save RSS Update Settings"
+msgstr "保存RSS更新设置"
+
+msgid "RSS Update Status"
+msgstr "RSS更新状态"
+
+msgid "Next Scheduled Update"
+msgstr "下次计划更新"
+
+msgid "Current Update Schedule"
+msgstr "当前更新计划"
+
+msgid "Last Update Time"
+msgstr "上次更新时间"
+
+msgid "Current Update Method"
+msgstr "当前更新方法"
+
+msgid "Bulk Update"
+msgstr "批量更新"
+
+msgid "Individual Update"
+msgstr "单独更新"
+
+msgid "Manual RSS Update"
+msgstr "手动RSS更新"
+
+msgid "Run RSS Update Now"
+msgstr "立即运行RSS更新"
+
+msgid "Click this button to manually trigger the RSS update task."
+msgstr "点击此按钮手动触发RSS更新任务。"
+
+msgid "RSS update settings have been saved."
+msgstr "RSS更新设置已保存。"
+
+msgid "Security check failed"
+msgstr "安全检查失败"
+
+msgid "RSS update task has been manually triggered. Please check the logs for details."
+msgstr "RSS更新任务已手动触发。请查看日志以了解详情。"
+
+msgid "Failed to trigger RSS update task. Please check the logs for details."
+msgstr "触发RSS更新任务失败。请查看日志以了解详情。"
+
+msgid "Update Method"
+msgstr "更新方法"
+
+msgid "Bulk update will update all sources at once, individual update will process each source separately."
+msgstr "批量更新会一次性更新所有源，单独更新会逐个处理每个源。"
+
+msgid "RSS Update Frequency"
+msgstr "RSS更新频率"

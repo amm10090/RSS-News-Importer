@@ -1,288 +1,269 @@
 <?php
+// 如果直接访问此文件，则中止执行
+if (!defined('ABSPATH')) {
+    exit;
+}
 
 /**
- * Handles the parsing of RSS feeds.
- *
- * @link       https://blog.amoze.cc/
- * @since      1.0.0
- *
- * @package    RSS_News_Importer
- * @subpackage RSS_News_Importer/includes
+ * RSS 新闻导入器解析器类
  */
-
-class RSS_News_Importer_Parser {
-
+class RSS_News_Importer_Parser
+{
     /**
-     * The logger instance.
-     *
-     * @since    1.0.0
-     * @access   private
-     * @var      RSS_News_Importer_Logger    $logger    The logger instance.
+     * 日志记录器实例
+     * @var RSS_News_Importer_Logger
      */
     private $logger;
 
     /**
-     * The cache instance.
-     *
-     * @since    1.0.0
-     * @access   private
-     * @var      RSS_News_Importer_Cache    $cache    The cache instance.
+     * 缓存实例
+     * @var RSS_News_Importer_Cache
      */
     private $cache;
 
     /**
-     * Initialize the class and set its properties.
-     *
-     * @since    1.0.0
-     * @param    RSS_News_Importer_Logger    $logger    The logger instance.
-     * @param    RSS_News_Importer_Cache     $cache     The cache instance.
+     * 用户代理列表
+     * @var array
      */
-    public function __construct($logger, $cache) {
+    private $user_agents = array(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15',
+        'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0',
+    );
+
+    /**
+     * 构造函数
+     * 
+     * @param RSS_News_Importer_Logger $logger 日志记录器实例
+     * @param RSS_News_Importer_Cache $cache 缓存实例
+     */
+    public function __construct($logger, $cache)
+    {
         $this->logger = $logger;
         $this->cache = $cache;
     }
+
     /**
-     * Fetch and parse an RSS feed.
-     *
-     * @since    1.0.0
-     * @param    string    $url    The URL of the RSS feed.
-     * @return   array|WP_Error    An array of parsed items or WP_Error on failure.
+     * 获取并解析RSS源
+     * 
+     * @param string $url RSS源URL
+     * @param bool $force_refresh 是否强制刷新
+     * @return array|WP_Error 解析后的数据或错误对象
      */
-    public function fetch_feed($url) {
-        $this->logger->log("Fetching feed: $url", 'info');
+    public function fetch_feed($url, $force_refresh = false)
+    {
+        $this->logger->log("正在获取源: " . $url, 'info');
 
-        // Check cache first
-        $cached_data = $this->cache->get_cached_feed($url);
-        if ($cached_data !== false) {
-            $this->logger->log("Using cached data for feed: $url", 'info');
-            return $cached_data;
+        $cache_key = 'rss_feed_' . md5($url);
+
+        if (!$force_refresh) {
+            $cached_data = $this->cache->get($cache_key);
+            if ($cached_data !== false) {
+                $this->logger->log("使用缓存数据: " . $url, 'info');
+                return $cached_data;
+            }
         }
 
-        $headers = array(
-            'User-Agent' => 'RSS News Importer/1.0 (WordPress; ' . get_bloginfo('url') . ')',
-        );
-
-        $last_modified = get_option('rss_news_importer_last_modified_' . md5($url));
-        $etag = get_option('rss_news_importer_etag_' . md5($url));
-
-        if ($last_modified) {
-            $headers['If-Modified-Since'] = $last_modified;
-        }
-        if ($etag) {
-            $headers['If-None-Match'] = $etag;
-        }
-
-        $response = wp_safe_remote_get($url, array(
-            'timeout' => 60,
-            'headers' => $headers,
-        ));
+        $response = $this->fetch_remote_feed($url);
 
         if (is_wp_error($response)) {
-            $this->logger->log("Failed to fetch feed: " . $response->get_error_message(), 'error');
             return $response;
         }
 
-        $response_code = wp_remote_retrieve_response_code($response);
+        $parsed_feed = $this->parse_feed($response['body']);
 
-        if ($response_code === 304) {
-            $this->logger->log("Feed not modified: $url", 'info');
-            return new WP_Error('not_modified', 'Feed content has not been modified');
+        if (!is_wp_error($parsed_feed)) {
+            $this->cache->set($cache_key, $parsed_feed, 3600); // 缓存1小时
         }
-
-        $body = wp_remote_retrieve_body($response);
-        $new_last_modified = wp_remote_retrieve_header($response, 'last-modified');
-        $new_etag = wp_remote_retrieve_header($response, 'etag');
-
-        if ($new_last_modified) {
-            update_option('rss_news_importer_last_modified_' . md5($url), $new_last_modified);
-        }
-        if ($new_etag) {
-            update_option('rss_news_importer_etag_' . md5($url), $new_etag);
-        }
-
-        $parsed_feed = $this->parse_feed($body);
-        if (is_wp_error($parsed_feed)) {
-            return $parsed_feed;
-        }
-
-        // Cache the parsed feed
-        $this->cache->set_cached_feed($url, $parsed_feed);
 
         return $parsed_feed;
     }
 
     /**
-     * Parse the RSS feed content.
-     *
-     * @since    1.0.0
-     * @param    string    $content    The raw content of the RSS feed.
-     * @return   array|WP_Error        An array of parsed items or WP_Error on failure.
+     * 获取远程RSS源
+     * 
+     * @param string $url RSS源URL
+     * @return array|WP_Error 响应数据或错误对象
      */
-    private function parse_feed($content) {
+    private function fetch_remote_feed($url)
+    {
+        $args = array(
+            'timeout'     => 60,
+            'redirection' => 5,
+            'sslverify'   => false,
+            'user-agent'  => $this->user_agents[array_rand($this->user_agents)],
+        );
+
+        $response = wp_remote_get($url, $args);
+
+        if (is_wp_error($response)) {
+            $this->logger->log("获取源失败: " . $response->get_error_message(), 'error');
+            return $response;
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        if ($response_code !== 200) {
+            $this->logger->log("HTTP错误: " . $response_code, 'error');
+            return new WP_Error('http_error', "HTTP错误: " . $response_code);
+        }
+
+        return $response;
+    }
+
+    /**
+     * 解析源内容
+     * 
+     * @param string $content 源内容
+     * @return array|WP_Error 解析后的数据或错误对象
+     */
+    private function parse_feed($content)
+    {
         libxml_use_internal_errors(true);
-        $feed = simplexml_load_string($content);
-        if (!$feed) {
-            $errors = libxml_get_errors();
-            libxml_clear_errors();
-            $error_messages = array();
-            foreach ($errors as $error) {
-                $error_messages[] = $error->message;
-            }
-            $this->logger->log("XML parsing failed: " . implode(', ', $error_messages), 'error');
-            return new WP_Error('xml_parse_error', 'XML parsing failed: ' . implode(', ', $error_messages));
+        $xml = simplexml_load_string($content);
+
+        if ($xml === false) {
+            $this->logger->log("XML解析失败", 'error');
+            return new WP_Error('xml_parse_error', '无效的XML格式');
         }
 
         $items = array();
-        $feed_items = $feed->channel->item ?? $feed->item ?? array();
 
-        foreach ($feed_items as $item) {
-            $parsed_item = $this->parse_item($item);
-            if (!is_wp_error($parsed_item)) {
-                $items[] = $parsed_item;
+        if ($xml->channel->item) { // RSS
+            foreach ($xml->channel->item as $item) {
+                $items[] = $this->parse_rss_item($item);
             }
-        }
-
-        if (empty($items)) {
-            $this->logger->log("No items found in the feed", 'warning');
-            return new WP_Error('no_items', 'No items found in the feed');
+        } elseif ($xml->entry) { // Atom
+            foreach ($xml->entry as $item) {
+                $items[] = $this->parse_atom_item($item);
+            }
+        } else {
+            $this->logger->log("未知的Feed格式", 'error');
+            return new WP_Error('unknown_feed_format', '未知的Feed格式');
         }
 
         return $items;
     }
 
     /**
-     * Parse a single RSS item.
-     *
-     * @since    1.0.0
-     * @param    SimpleXMLElement    $item    The RSS item to parse.
-     * @return   array|WP_Error               The parsed item or WP_Error on failure.
+     * 解析RSS项目
+     * 
+     * @param SimpleXMLElement $item RSS项目
+     * @return array 解析后的项目数据
      */
-    private function parse_item($item) {
-        try {
-            $parsed_item = array(
-                'title' => $this->get_item_title($item),
-                'link' => (string)($item->link ?? ''),
-                'guid' => (string)($item->guid ?? ''),
-                'description' => $this->get_item_description($item),
-                'content' => $this->get_item_content($item),
-                'pubDate' => $this->get_item_pub_date($item),
-                'author' => $this->get_item_author($item),
-                'categories' => $this->get_item_categories($item),
-                'thumbnail' => $this->get_item_thumbnail($item),
-            );
-
-            // Remove empty values
-            $parsed_item = array_filter($parsed_item);
-
-            return $parsed_item;
-        } catch (Exception $e) {
-            $this->logger->log("Failed to parse item: " . $e->getMessage(), 'error');
-            return new WP_Error('parse_item_error', $e->getMessage());
-        }
+    private function parse_rss_item($item)
+    {
+        return array(
+            'title'       => (string)$item->title,
+            'link'        => (string)$item->link,
+            'description' => (string)$item->description,
+            'pubDate'     => $this->parse_date((string)$item->pubDate),
+            'guid'        => (string)$item->guid,
+            'author'      => (string)$item->author,
+            'thumbnail'   => $this->extract_thumbnail($item),
+        );
     }
 
     /**
-     * Get the title of an RSS item.
-     *
-     * @since    1.0.0
-     * @param    SimpleXMLElement    $item    The RSS item.
-     * @return   string                       The item title.
+     * 解析Atom项目
+     * 
+     * @param SimpleXMLElement $item Atom项目
+     * @return array 解析后的项目数据
      */
-    private function get_item_title($item) {
-        return html_entity_decode(trim((string)($item->title ?? '')), ENT_QUOTES, 'UTF-8');
+    private function parse_atom_item($item)
+    {
+        return array(
+            'title'       => (string)$item->title,
+            'link'        => (string)$item->link['href'],
+            'description' => (string)$item->summary,
+            'pubDate'     => $this->parse_date((string)$item->published),
+            'guid'        => (string)$item->id,
+            'author'      => (string)$item->author->name,
+            'thumbnail'   => $this->extract_thumbnail($item),
+        );
     }
 
     /**
-     * Get the description of an RSS item.
-     *
-     * @since    1.0.0
-     * @param    SimpleXMLElement    $item    The RSS item.
-     * @return   string                       The item description.
+     * 解析日期
+     * 
+     * @param string $date_string 日期字符串
+     * @return string 格式化的日期
      */
-    private function get_item_description($item) {
-        return html_entity_decode(trim((string)($item->description ?? '')), ENT_QUOTES, 'UTF-8');
+    private function parse_date($date_string)
+    {
+        $date = date_create($date_string);
+        return $date ? date_format($date, 'Y-m-d H:i:s') : '';
     }
 
     /**
-     * Get the content of an RSS item.
-     *
-     * @since    1.0.0
-     * @param    SimpleXMLElement    $item    The RSS item.
-     * @return   string                       The item content.
+     * 从项目中提取缩略图
+     * 
+     * @param SimpleXMLElement $item 项目数据
+     * @return string 缩略图URL
      */
-    private function get_item_content($item) {
-        $content = $item->children('content', true)->encoded ?? '';
-        return html_entity_decode(trim((string)$content), ENT_QUOTES, 'UTF-8');
-    }
-
-    /**
-     * Get the publication date of an RSS item.
-     *
-     * @since    1.0.0
-     * @param    SimpleXMLElement    $item    The RSS item.
-     * @return   string                       The item publication date.
-     */
-    private function get_item_pub_date($item) {
-        $pubDate = (string)($item->pubDate ?? '');
-        return $pubDate ? date('Y-m-d H:i:s', strtotime($pubDate)) : '';
-    }
-
-    /**
-     * Get the author of an RSS item.
-     *
-     * @since    1.0.0
-     * @param    SimpleXMLElement    $item    The RSS item.
-     * @return   string                       The item author.
-     */
-    private function get_item_author($item) {
-        return (string)($item->author ?? $item->children('dc', true)->creator ?? '');
-    }
-
-    /**
-     * Get the categories of an RSS item.
-     *
-     * @since    1.0.0
-     * @param    SimpleXMLElement    $item    The RSS item.
-     * @return   array                        The item categories.
-     */
-    private function get_item_categories($item) {
-        $categories = array();
-        foreach ($item->category as $category) {
-            $categories[] = (string)$category;
-        }
-        return $categories;
-    }
-
-    /**
-     * Get the thumbnail URL of an RSS item.
-     *
-     * @since    1.0.0
-     * @param    SimpleXMLElement    $item    The RSS item.
-     * @return   string                       The item thumbnail URL.
-     */
-    private function get_item_thumbnail($item) {
+    private function extract_thumbnail($item)
+    {
         $namespaces = $item->getNamespaces(true);
+
         if (isset($namespaces['media'])) {
             $media = $item->children($namespaces['media']);
+            if (isset($media->thumbnail)) {
+                return (string)$media->thumbnail->attributes()->url;
+            }
             if (isset($media->content)) {
-                $attributes = $media->content->attributes();
-                if (isset($attributes['url'])) {
-                    return (string)$attributes['url'];
-                }
+                return (string)$media->content->attributes()->url;
             }
         }
+
+        // 从内容中提取第一张图片
+        $content = (string)$item->description ?? (string)$item->content;
+        preg_match('/<img.+src=[\'"](?P<src>.+?)[\'"].*>/i', $content, $matches);
+        if (isset($matches['src'])) {
+            return $matches['src'];
+        }
+
         return '';
     }
 
     /**
-     * Preview an RSS feed.
-     *
-     * @since    1.0.0
-     * @param    string    $url      The URL of the RSS feed.
-     * @param    int       $limit    Optional. The number of items to preview. Default 5.
-     * @return   string|WP_Error     HTML preview of the feed or WP_Error on failure.
+     * 验证RSS源
+     * 
+     * @param string $url RSS源URL
+     * @return bool|WP_Error 验证结果
      */
-    public function preview_feed($url, $limit = 5) {
+    public function validate_feed($url)
+    {
+        $response = $this->fetch_remote_feed($url);
+
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        $content_type = wp_remote_retrieve_header($response, 'content-type');
+        if (
+            strpos($content_type, 'application/rss+xml') === false &&
+            strpos($content_type, 'application/atom+xml') === false &&
+            strpos($content_type, 'text/xml') === false
+        ) {
+            return new WP_Error('invalid_feed', '无效的内容类型: ' . $content_type);
+        }
+
+        $parsed_feed = $this->parse_feed(wp_remote_retrieve_body($response));
+        if (is_wp_error($parsed_feed)) {
+            return $parsed_feed;
+        }
+
+        return true;
+    }
+
+    /**
+     * 预览RSS源
+     * 
+     * @param string $url RSS源URL
+     * @param int $limit 预览项目数量
+     * @return string|WP_Error 预览HTML或错误对象
+     */
+    public function preview_feed($url, $limit = 5)
+    {
         $feed_data = $this->fetch_feed($url);
 
         if (is_wp_error($feed_data)) {
@@ -301,20 +282,20 @@ class RSS_News_Importer_Parser {
     }
 
     /**
-     * Get HTML for a preview item.
-     *
-     * @since    1.0.0
-     * @param    array     $item    The parsed RSS item.
-     * @return   string             HTML for the preview item.
+     * 获取预览项目的HTML
+     * 
+     * @param array $item 项目数据
+     * @return string 项目HTML
      */
-    private function get_preview_item_html($item) {
+    private function get_preview_item_html($item)
+    {
         $html = '<li class="feed-preview-item">';
         $html .= '<h3>' . esc_html($item['title']) . '</h3>';
         $html .= '<p>' . wp_trim_words(wp_strip_all_tags($item['description']), 30, '...') . '</p>';
         if (!empty($item['thumbnail'])) {
-            $html .= '<img src="' . esc_url($item['thumbnail']) . '" alt="Thumbnail" class="feed-preview-thumbnail">';
+            $html .= '<img src="' . esc_url($item['thumbnail']) . '" alt="缩略图" class="feed-preview-thumbnail">';
         }
-        $html .= '<a href="' . esc_url($item['link']) . '" target="_blank" class="feed-preview-link">Read More</a>';
+        $html .= '<a href="' . esc_url($item['link']) . '" target="_blank" class="feed-preview-link">阅读更多</a>';
         $html .= '</li>';
         return $html;
     }

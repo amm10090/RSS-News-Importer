@@ -1,215 +1,233 @@
 <?php
-
-// 如果直接访问此文件，则中止执行
 if (!defined('ABSPATH')) {
     exit;
 }
-require_once plugin_dir_path(dirname(__FILE__)) . 'admin/partials/class-rss-news-importer-dashboard.php';
+
 class RSS_News_Importer_Cron_Manager
 {
     private $plugin_name;
     private $version;
-    private $cron_hook = 'rss_news_importer_cron_hook';
-    private $option_name = 'rss_news_importer_options';
+    private $cron_hook = 'rss_news_importer_update_hook';
     private $logger;
+    private $importer;
+    private $options;
+    private $cache;
+
 
     public function __construct($plugin_name, $version)
     {
         $this->plugin_name = $plugin_name;
         $this->version = $version;
         $this->logger = new RSS_News_Importer_Logger();
+        $this->cache = new RSS_News_Importer_Cache($plugin_name, $version, $this->logger);
+        $this->importer = new RSS_News_Importer_Post_Importer($plugin_name, $version, $this->cache);
+        $this->options = get_option('rss_news_importer_options', array());
     }
 
-    // 获取cron钩子名称
+    public function init()
+    {
+        add_action($this->cron_hook, array($this, 'execute_rss_update'));
+        add_filter('cron_schedules', array($this, 'add_custom_cron_interval'));
+    }
+
+    public function schedule_update($recurrence = 'hourly')
+    {
+        if (!wp_next_scheduled($this->cron_hook)) {
+            wp_schedule_event(time(), $recurrence, $this->cron_hook);
+            $this->logger->log("定时RSS更新任务已计划，频率: $recurrence", 'info');
+        }
+    }
+
+    public function unschedule_update()
+    {
+        $timestamp = wp_next_scheduled($this->cron_hook);
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, $this->cron_hook);
+            $this->logger->log("RSS更新任务已取消计划", 'info');
+        }
+    }
+
+    public function execute_rss_update()
+    {
+        try {
+            $this->logger->log("开始RSS更新任务", 'info');
+
+            $update_method = $this->options['update_method'] ?? 'bulk';
+            $feeds = $this->get_rss_feeds();
+
+            if (empty($feeds)) {
+                $this->logger->log("没有找到RSS源配置", 'warning');
+                return;
+            }
+
+            if ($update_method === 'individual') {
+                $this->update_feeds_individually($feeds);
+            } else {
+                $this->update_feeds_bulk($feeds);
+            }
+
+            $this->logger->log("RSS更新任务完成", 'info');
+        } catch (Exception $e) {
+            $this->logger->log("RSS更新任务发生错误: " . $e->getMessage(), 'error');
+        }
+    }
+
+    private function update_feeds_individually($feeds)
+    {
+        foreach ($feeds as $feed) {
+            $this->logger->log("正在更新源: {$feed['url']}", 'info');
+            try {
+                $result = $this->importer->import_feed($feed['url']);
+                $this->logger->log("更新源 {$feed['url']} 完成: 导入 $result 篇文章", 'info');
+            } catch (Exception $e) {
+                $this->logger->log("更新源 {$feed['url']} 时出错: " . $e->getMessage(), 'error');
+            }
+        }
+    }
+
+    private function update_feeds_bulk($feeds)
+    {
+        try {
+            if (empty($feeds)) {
+                $this->logger->log("没有可用的RSS源进行更新", 'warning');
+                return;
+            }
+            $result = $this->importer->import_all_feeds($feeds);
+            $this->logger->log("批量更新源完成: 共导入 $result 篇文章", 'info');
+        } catch (Exception $e) {
+            $this->logger->log("批量更新源时出错: " . $e->getMessage(), 'error');
+        }
+    }
+
+    public function get_current_schedule()
+    {
+        $crons = _get_cron_array();
+        foreach ($crons as $timestamp => $cron) {
+            if (isset($cron[$this->cron_hook])) {
+                return key($cron[$this->cron_hook]);
+            }
+        }
+        return false;
+    }
+
+    public function get_next_scheduled_time()
+    {
+        return wp_next_scheduled($this->cron_hook);
+    }
+
+    public function update_schedule($new_schedule)
+    {
+        $this->unschedule_update();
+        $this->schedule_update($new_schedule);
+        $this->logger->log("RSS更新计划已更新为: $new_schedule", 'info');
+    }
+
+    public function add_custom_cron_interval($schedules)
+    {
+        $custom_interval = $this->options['custom_cron_interval'] ?? null;
+        if ($custom_interval) {
+            $schedules['rss_custom_interval'] = array(
+                'interval' => $custom_interval * 60,
+                'display' => sprintf(__('每 %d 分钟', 'rss-news-importer'), $custom_interval)
+            );
+        }
+        return $schedules;
+    }
+
+    public function get_rss_feeds()
+    {
+        return $this->options['rss_feeds'] ?? array();
+    }
+
+    public function is_update_due()
+    {
+        $last_update = get_option('rss_news_importer_last_update', 0);
+        $update_interval = $this->get_update_interval();
+        return (time() - $last_update) >= $update_interval;
+    }
+
+    private function get_update_interval()
+    {
+        $schedule = $this->get_current_schedule();
+        if ($schedule === 'rss_custom_interval') {
+            return ($this->options['custom_cron_interval'] ?? 60) * 60; // 转换分钟为秒
+        }
+        $schedules = wp_get_schedules();
+        return $schedules[$schedule]['interval'] ?? 3600; // 默认为每小时
+    }
+
+    public function maybe_update_feeds()
+    {
+        if ($this->is_update_due()) {
+            $this->execute_rss_update();
+            update_option('rss_news_importer_last_update', time());
+        }
+    }
+
+    public function get_cron_status()
+    {
+        return array(
+            'next_scheduled' => $this->get_next_scheduled_time(),
+            'current_schedule' => $this->get_current_schedule(),
+            'last_update' => get_option('rss_news_importer_last_update', 0),
+            'update_method' => $this->options['update_method'] ?? 'bulk'
+        );
+    }
+
+    public function is_wp_cron_enabled()
+    {
+        return !(defined('DISABLE_WP_CRON') && True);
+    }
+
     public function get_cron_hook()
     {
         return $this->cron_hook;
     }
 
-    // 安排RSS导入任务
-    public function schedule_import($recurrence = 'hourly')
+    public function manual_update()
     {
-        if (!wp_next_scheduled($this->get_cron_hook())) {
-            wp_schedule_event(time(), $recurrence, $this->get_cron_hook());
-            $this->logger->log("Scheduled import task with recurrence: $recurrence", 'info');
-        }
-    }
+        $this->logger->log("开始手动更新RSS源", 'info');
 
-    // 取消RSS导入任务
-    public function unschedule_import()
-    {
-        $timestamp = wp_next_scheduled($this->get_cron_hook());
-        if ($timestamp) {
-            wp_unschedule_event($timestamp, $this->get_cron_hook());
-            $this->logger->log("Unscheduled import task", 'info');
-        }
-    }
+        try {
+            $feeds = $this->get_rss_feeds();
 
-    // 执行RSS导入任务
-    public function run_tasks()
-    {
-        $this->logger->log("Starting RSS import task", 'info');
+            if (empty($feeds)) {
+                $this->logger->log("没有找到RSS源配置", 'warning');
+                return false;
+            }
 
-        $options = get_option($this->option_name);
-        $feeds = isset($options['rss_feeds']) ? $options['rss_feeds'] : array();
+            $total_imported = 0;
+            $update_method = $this->options['update_method'] ?? 'bulk';
 
-        $importer = new RSS_News_Importer_Post_Importer($this->plugin_name, $this->version);
+            foreach ($feeds as $feed) {
+                $feed_url = is_array($feed) ? $feed['url'] : $feed;
+                $this->logger->log("正在手动更新源: {$feed_url}", 'info');
 
-        foreach ($feeds as $feed) {
-            $feed_url = is_array($feed) ? $feed['url'] : $feed;
-            $feed_name = is_array($feed) && isset($feed['name']) ? $feed['name'] : $feed_url;
-
-            $this->logger->log("Importing from feed: $feed_name", 'info');
-            $result = $importer->import_feed($feed_url);
-            $this->logger->log("Imported $result posts from feed: $feed_name", 'info');
-        }
-
-        $this->logger->log("Completed RSS import task", 'info');
-        $this->update_last_run_time();
-    }
-
-    // 获取下次计划任务的执行时间
-    public function get_next_scheduled_time()
-    {
-        return wp_next_scheduled($this->get_cron_hook());
-    }
-
-    // 更新任务计划
-    public function update_schedule($new_recurrence)
-    {
-        $this->unschedule_import();
-        $this->schedule_import($new_recurrence);
-        $this->logger->log("Updated import schedule to: $new_recurrence", 'info');
-    }
-
-    // 获取当前计划
-    public function get_current_schedule()
-    {
-        $timestamp = wp_next_scheduled($this->get_cron_hook());
-        if ($timestamp) {
-            $recurrence = wp_get_schedule($this->get_cron_hook());
-            return $recurrence ? $recurrence : 'manual';
-        }
-        return 'manual';
-    }
-
-    // 手动运行导入任务
-    public function run_import_now()
-    {
-        $this->run_tasks();
-        $this->logger->log("Manually ran import task", 'info');
-    }
-
-    // 获取所有可用的定时任务间隔
-    public function get_available_schedules()
-    {
-        $schedules = wp_get_schedules();
-        $available_schedules = array();
-        foreach ($schedules as $key => $schedule) {
-            $available_schedules[$key] = $schedule['display'];
-        }
-        return $available_schedules;
-    }
-
-    // 添加自定义定时任务间隔
-    public function add_custom_schedules($schedules)
-    {
-        $schedules['weekly'] = array(
-            'interval' => 604800,
-            'display' => __('Once Weekly', 'rss-news-importer')
-        );
-        $schedules['monthly'] = array(
-            'interval' => 2635200,
-            'display' => __('Once a month', 'rss-news-importer')
-        );
-        return $schedules;
-    }
-
-    // 初始化定时任务钩子
-    public function init_cron_hooks()
-    {
-        add_filter('cron_schedules', array($this, 'add_custom_schedules'));
-        add_action($this->get_cron_hook(), array($this, 'run_tasks'));
-    }
-
-    // 更新最后运行时间
-    private function update_last_run_time()
-    {
-        update_option('rss_news_importer_last_cron_run', time());
-    }
-
-    // 获取定时任务状态
-    public function get_cron_status()
-    {
-        $next_scheduled = $this->get_next_scheduled_time();
-        $current_schedule = $this->get_current_schedule();
-        $last_run = get_option('rss_news_importer_last_cron_run');
-
-        return array(
-            'next_scheduled' => $next_scheduled ? date('Y-m-d H:i:s', $next_scheduled) : 'Not scheduled',
-            'current_schedule' => $current_schedule,
-            'last_run' => $last_run ? date('Y-m-d H:i:s', $last_run) : 'Never run'
-        );
-    }
-
-    /**
-     * 重置定时任务
-     */
-    public function reset_cron()
-    {
-        $this->unschedule_import();
-        $this->schedule_import();
-        $this->logger->log("定时任务已重置", 'info');
-    }
-
-    /**
-     * 获取所有计划任务
-     *
-     * @return array
-     */
-    public function get_all_scheduled_tasks()
-    {
-        $cron_array = _get_cron_array();
-        $tasks = array();
-
-        foreach ($cron_array as $timestamp => $cron) {
-            foreach ($cron as $hook => $dings) {
-                foreach ($dings as $key => $data) {
-                    $tasks[] = array(
-                        'hook' => $hook,
-                        'timestamp' => $timestamp,
-                        'schedule' => $data['schedule'],
-                        'args' => $data['args']
-                    );
+                try {
+                    // 强制刷新,跳过缓存
+                    if ($update_method === 'individual') {
+                        $result = $this->importer->import_feed($feed_url, true);
+                        $this->logger->log("手动更新源 {$feed_url} 完成: 导入 {$result} 篇文章", 'info');
+                        $total_imported += $result;
+                    } else {
+                        // 如果是批量更新,我们需要确保importer的import_all_feeds方法也支持强制刷新
+                        $result = $this->importer->import_feed($feed_url, true);
+                        $total_imported += $result;
+                    }
+                } catch (Exception $e) {
+                    $this->logger->log("手动更新源 {$feed_url} 时出错: " . $e->getMessage(), 'error');
                 }
             }
-        }
 
-        return $tasks;
-    }
-
-    /**
-     * 清理过期的定时任务
-     */
-    public function clean_expired_crons()
-    {
-        $cron_array = _get_cron_array();
-        $current_time = time();
-        $cleaned = false;
-
-        foreach ($cron_array as $timestamp => $cron) {
-            if ($timestamp < $current_time) {
-                unset($cron_array[$timestamp]);
-                $cleaned = true;
+            if ($update_method === 'bulk') {
+                $this->logger->log("批量手动更新完成: 共导入 {$total_imported} 篇文章", 'info');
             }
-        }
 
-        if ($cleaned) {
-            _set_cron_array($cron_array);
-            $this->logger->log("已清理过期的定时任务", 'info');
+            $this->logger->log("手动更新RSS任务完成,共导入 {$total_imported} 篇文章", 'info');
+            return $total_imported;
+        } catch (Exception $e) {
+            $this->logger->log("手动更新RSS任务失败: " . $e->getMessage(), 'error');
+            return false;
         }
     }
-    public function is_wp_cron_enabled() {
-    return !(defined('DISABLE_WP_CRON') && DISABLE_WP_CRON);
-}
 }

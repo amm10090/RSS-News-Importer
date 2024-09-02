@@ -1,17 +1,17 @@
 <?php
 
 /**
- * The core plugin class.
+ * RSS新闻导入器的核心插件类
  *
- * This is used to define internationalization, admin-specific hooks, and
- * public-facing site hooks.
+ * 用于定义国际化、管理特定钩子和公共面向站点的钩子
  *
  * @since      1.0.0
  * @package    RSS_News_Importer
  * @subpackage RSS_News_Importer/includes
  */
 
-class RSS_News_Importer {
+class RSS_News_Importer
+{
 
     // 插件加载器
     protected $loader;
@@ -29,7 +29,8 @@ class RSS_News_Importer {
      *
      * @since    1.0.0
      */
-    public function __construct() {
+    public function __construct()
+    {
         if (defined('RSS_NEWS_IMPORTER_VERSION')) {
             $this->version = RSS_NEWS_IMPORTER_VERSION;
         } else {
@@ -42,35 +43,39 @@ class RSS_News_Importer {
         $this->define_admin_hooks();
         $this->define_public_hooks();
         $this->check_and_create_tables();
-
     }
 
-//检查并创建表
-    public function check_and_create_tables() {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'rss_news_importer_logs';
-    
-    if($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
-        $charset_collate = $wpdb->get_charset_collate();
+    /**
+     * 检查并创建必要的数据库表
+     */
+    public function check_and_create_tables()
+    {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'rss_news_importer_logs';
 
-        $sql = "CREATE TABLE $table_name (
-            id mediumint(9) NOT NULL AUTO_INCREMENT,
-            feed_url varchar(255) NOT NULL,
-            import_time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
-            PRIMARY KEY  (id)
-        ) $charset_collate;";
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+            $charset_collate = $wpdb->get_charset_collate();
 
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql);
+            $sql = "CREATE TABLE $table_name (
+                id mediumint(9) NOT NULL AUTO_INCREMENT,
+                feed_url varchar(255) NOT NULL,
+                import_time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+                PRIMARY KEY  (id)
+            ) $charset_collate;";
+
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            dbDelta($sql);
+        }
     }
-}
+
     /**
      * 加载插件所需的依赖项
      *
      * @since    1.0.0
      * @access   private
      */
-    private function load_dependencies() {
+    private function load_dependencies()
+    {
         // 加载必要的类文件
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-rss-news-importer-loader.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-rss-news-importer-i18n.php';
@@ -83,6 +88,9 @@ class RSS_News_Importer {
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-cron-manager.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-logger.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-queue.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-image-scraper.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-content-filter.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-rss-news-importer-admin-ajax.php';
 
         $this->loader = new RSS_News_Importer_Loader();
     }
@@ -93,7 +101,8 @@ class RSS_News_Importer {
      * @since    1.0.0
      * @access   private
      */
-    private function set_locale() {
+    private function set_locale()
+    {
         $plugin_i18n = new RSS_News_Importer_i18n();
         $this->loader->add_action('plugins_loaded', $plugin_i18n, 'load_plugin_textdomain');
     }
@@ -104,10 +113,13 @@ class RSS_News_Importer {
      * @since    1.0.0
      * @access   private
      */
-    private function define_admin_hooks() {
+    private function define_admin_hooks()
+    {
         $plugin_admin = new RSS_News_Importer_Admin($this->get_plugin_name(), $this->get_version());
         $plugin_menu = new RSS_News_Importer_Menu($this->get_plugin_name(), $this->get_version(), $plugin_admin);
         $plugin_settings = new RSS_News_Importer_Settings($this->get_plugin_name(), $this->get_version(), 'rss_news_importer_options', $plugin_admin);
+        $cron_manager = new RSS_News_Importer_Cron_Manager($this->get_plugin_name(), $this->get_version());
+        $admin_ajax = new RSS_News_Importer_Admin_Ajax($plugin_admin);
 
         $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_styles');
         $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
@@ -115,16 +127,15 @@ class RSS_News_Importer {
         $this->loader->add_action('admin_init', $plugin_settings, 'register_settings');
 
         // 添加定时任务相关的钩子
-        $cron_manager = new RSS_News_Importer_Cron_Manager($this->get_plugin_name(), $this->get_version());
-        $this->loader->add_action($cron_manager->get_cron_hook(), $cron_manager, 'run_tasks');
+        $this->loader->add_action($cron_manager->get_cron_hook(), $cron_manager, 'execute_rss_update');
         $this->loader->add_action('admin_init', $plugin_admin, 'handle_cron_settings_save');
 
         // 添加AJAX处理方法
-        $this->loader->add_action('wp_ajax_rss_news_importer_import_now', $plugin_admin, 'import_now_ajax');
-        $this->loader->add_action('wp_ajax_rss_news_importer_add_feed', $plugin_admin, 'add_feed_ajax');
-        $this->loader->add_action('wp_ajax_rss_news_importer_remove_feed', $plugin_admin, 'remove_feed_ajax');
-        $this->loader->add_action('wp_ajax_rss_news_importer_update_feed_order', $plugin_admin, 'update_feed_order_ajax');
-        $this->loader->add_action('wp_ajax_rss_news_importer_run_task', $plugin_admin, 'run_task_ajax');
+        $this->loader->add_action('wp_ajax_rss_news_importer_import_now', $admin_ajax, 'import_now_ajax');
+        $this->loader->add_action('wp_ajax_rss_news_importer_add_feed', $admin_ajax, 'add_feed_ajax');
+        $this->loader->add_action('wp_ajax_rss_news_importer_remove_feed', $admin_ajax, 'remove_feed_ajax');
+        $this->loader->add_action('wp_ajax_rss_news_importer_update_feed_order', $admin_ajax, 'update_feed_order_ajax');
+        $this->loader->add_action('wp_ajax_rss_news_importer_run_task', $admin_ajax, 'run_task_ajax');
     }
 
     /**
@@ -133,7 +144,8 @@ class RSS_News_Importer {
      * @since    1.0.0
      * @access   private
      */
-    private function define_public_hooks() {
+    private function define_public_hooks()
+    {
         $plugin_public = new RSS_News_Importer_Public($this->get_plugin_name(), $this->get_version());
 
         $this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_styles');
@@ -145,7 +157,8 @@ class RSS_News_Importer {
      *
      * @since    1.0.0
      */
-    public function run() {
+    public function run()
+    {
         $this->loader->run();
     }
 
@@ -155,7 +168,8 @@ class RSS_News_Importer {
      * @since     1.0.0
      * @return    string    插件名称。
      */
-    public function get_plugin_name() {
+    public function get_plugin_name()
+    {
         return $this->plugin_name;
     }
 
@@ -165,7 +179,8 @@ class RSS_News_Importer {
      * @since     1.0.0
      * @return    RSS_News_Importer_Loader    协调插件钩子的加载器。
      */
-    public function get_loader() {
+    public function get_loader()
+    {
         return $this->loader;
     }
 
@@ -175,49 +190,22 @@ class RSS_News_Importer {
      * @since     1.0.0
      * @return    string    插件版本号。
      */
-    public function get_version() {
+    public function get_version()
+    {
         return $this->version;
     }
 
-    /**
-     * 激活插件
-     *
-     * @since    1.0.0
-     */
-    public static function activate() {
-        $cron_manager = new RSS_News_Importer_Cron_Manager('rss-news-importer', RSS_NEWS_IMPORTER_VERSION);
-        $cron_manager->schedule_import();
-    }
 
-    /**
-     * 停用插件
-     *
-     * @since    1.0.0
-     */
-    public static function deactivate() {
-            global $wpdb;
-    $table_name = $wpdb->prefix . 'rss_news_importer_logs';
-    $charset_collate = $wpdb->get_charset_collate();
 
-    $sql = "CREATE TABLE $table_name (
-        id mediumint(9) NOT NULL AUTO_INCREMENT,
-        feed_url varchar(255) NOT NULL,
-        import_time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
-        PRIMARY KEY  (id)
-    ) $charset_collate;";
 
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql);
-        $cron_manager = new RSS_News_Importer_Cron_Manager('rss-news-importer', RSS_NEWS_IMPORTER_VERSION);
-        $cron_manager->unschedule_import();
-    }
 
     /**
      * 卸载插件
      *
      * @since    1.0.0
      */
-    public static function uninstall() {
+    public static function uninstall()
+    {
         delete_option('rss_news_importer_options');
         // 可以在这里添加其他清理操作
     }

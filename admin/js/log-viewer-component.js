@@ -8,18 +8,20 @@
         const [filteredLogs, setFilteredLogs] = useState([]);
         const [searchTerm, setSearchTerm] = useState('');
         const [filterOptions, setFilterOptions] = useState({
-            dateRange: { start: null, end: null },
             logLevel: 'all',
-            customFilters: []
+            dateRange: { start: '', end: '' }
         });
         const [sortOption, setSortOption] = useState({ field: 'date', order: 'desc' });
         const [currentPage, setCurrentPage] = useState(1);
-        const [logsPerPage, setLogsPerPage] = useState(50);
-        const [isAutoRefresh, setIsAutoRefresh] = useState(true);
-        const [refreshInterval, setRefreshInterval] = useState(30000);
+        const [logsPerPage] = useState(50);
+        const [statistics, setStatistics] = useState({
+            totalLogs: 0,
+            errorCount: 0,
+            warningCount: 0,
+            infoCount: 0
+        });
+        const [isAutoRefresh, setIsAutoRefresh] = useState(false);
         const [theme, setTheme] = useState('light');
-        const [statistics, setStatistics] = useState({});
-        const observerRef = useRef(null);
         const logListRef = useRef(null);
 
         const fetchLogs = useCallback(async (params = {}) => {
@@ -40,102 +42,88 @@
                     return [];
                 }
             } catch (error) {
-                console.error('Ajax请求失败:', error);
+                console.error('Ajax request failed:', error);
                 return [];
             }
         }, [ajaxUrl, nonce]);
 
         useEffect(() => {
-            fetchLogs().then(data => {
-                setLogs(Array.isArray(data) ? data : []);
-            });
+            fetchLogs().then(setLogs);
         }, [fetchLogs]);
 
         useEffect(() => {
-            const fetchNewLogs = async () => {
-                const newLogs = await fetchLogs({ after: logs[0]?.id });
-                if (Array.isArray(newLogs) && newLogs.length > 0) {
-                    setLogs(prevLogs => [...newLogs, ...prevLogs]);
-                }
-            };
-
+            let intervalId;
             if (isAutoRefresh) {
-                const intervalId = setInterval(fetchNewLogs, refreshInterval);
-                return () => clearInterval(intervalId);
+                intervalId = setInterval(() => {
+                    fetchLogs().then(setLogs);
+                }, 30000); // 每30秒刷新一次
             }
-        }, [isAutoRefresh, refreshInterval, logs, fetchLogs]);
-
-        useEffect(() => {
-            const options = {
-                root: null,
-                rootMargin: '20px',
-                threshold: 1.0
-            };
-
-            const observer = new IntersectionObserver((entries) => {
-                if (entries[0].isIntersecting) {
-                    loadMoreLogs();
-                }
-            }, options);
-
-            if (logListRef.current && logListRef.current.lastElementChild) {
-                observer.observe(logListRef.current.lastElementChild);
-            }
-
-            observerRef.current = observer;
-
             return () => {
-                if (observerRef.current) {
-                    observerRef.current.disconnect();
+                if (intervalId) {
+                    clearInterval(intervalId);
                 }
             };
-        }, [filteredLogs]);
-
-        const loadMoreLogs = useCallback(() => {
-            setCurrentPage(prevPage => prevPage + 1);
-        }, []);
+        }, [isAutoRefresh, fetchLogs]);
 
         useEffect(() => {
-            if (Array.isArray(logs) && logs.length > 0) {
-                const filtered = logs.filter(log => {
-                    if (!log || typeof log !== 'object') {
-                        return false;
-                    }
-                    const matchesSearch = (log.message && log.message.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                        (log.date && log.date.toLowerCase().includes(searchTerm.toLowerCase()));
-                    const matchesLevel = filterOptions.logLevel === 'all' || (log.level && log.level.toLowerCase() === filterOptions.logLevel.toLowerCase());
-                    const matchesDateRange = (!filterOptions.dateRange.start || new Date(log.date) >= new Date(filterOptions.dateRange.start)) &&
-                        (!filterOptions.dateRange.end || new Date(log.date) <= new Date(filterOptions.dateRange.end));
-                    const matchesCustomFilters = filterOptions.customFilters.every(filter => {
-                        const regex = new RegExp(filter.pattern, 'i');
-                        return log[filter.field] && regex.test(log[filter.field]);
-                    });
+            const filtered = logs.filter(log => {
+                const matchesSearch = log.message.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesLevel = filterOptions.logLevel === 'all' || log.level === filterOptions.logLevel;
+                const matchesDate = (!filterOptions.dateRange.start || new Date(log.date) >= new Date(filterOptions.dateRange.start)) &&
+                                    (!filterOptions.dateRange.end || new Date(log.date) <= new Date(filterOptions.dateRange.end));
+                return matchesSearch && matchesLevel && matchesDate;
+            });
 
-                    return matchesSearch && matchesLevel && matchesDateRange && matchesCustomFilters;
-                });
+            const sorted = [...filtered].sort((a, b) => {
+                if (sortOption.field === 'date') {
+                    return sortOption.order === 'asc' 
+                        ? new Date(a.date) - new Date(b.date)
+                        : new Date(b.date) - new Date(a.date);
+                }
+                return 0;
+            });
 
-                const sorted = [...filtered].sort((a, b) => {
-                    const aValue = a[sortOption.field];
-                    const bValue = b[sortOption.field];
-                    return sortOption.order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-                });
-
-                setFilteredLogs(sorted);
-                setCurrentPage(1);
-                updateStatistics(sorted);
-            } else {
-                setFilteredLogs([]);
-            }
+            setFilteredLogs(sorted);
+            setStatistics({
+                totalLogs: sorted.length,
+                errorCount: sorted.filter(log => log.level === 'error').length,
+                warningCount: sorted.filter(log => log.level === 'warning').length,
+                infoCount: sorted.filter(log => log.level === 'info').length
+            });
         }, [logs, searchTerm, filterOptions, sortOption]);
 
-        const updateStatistics = (filteredLogs) => {
-            const stats = {
-                totalLogs: filteredLogs.length,
-                errorCount: filteredLogs.filter(log => log.level && log.level.toLowerCase() === 'error').length,
-                warningCount: filteredLogs.filter(log => log.level && log.level.toLowerCase() === 'warning').length,
-                infoCount: filteredLogs.filter(log => log.level && log.level.toLowerCase() === 'info').length
-            };
-            setStatistics(stats);
+        const loadMoreLogs = () => {
+            setCurrentPage(prevPage => prevPage + 1);
+        };
+
+        const exportLogs = async (format) => {
+            try {
+                const response = await $.ajax({
+                    url: ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'rss_news_importer_export_logs',
+                        security: nonce,
+                        format: format
+                    }
+                });
+                if (response.success) {
+                    const blob = new Blob([response.data], { type: format === 'csv' ? 'text/csv' : 'application/json' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `rss_news_importer_logs.${format}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    alert(translations.error_exporting);
+                }
+            } catch (error) {
+                console.error('Export failed:', error);
+                alert(translations.error_exporting);
+            }
         };
 
         const clearLogs = async () => {
@@ -149,62 +137,16 @@
                             security: nonce
                         }
                     });
-
                     if (response.success) {
                         setLogs([]);
-                        setFilteredLogs([]);
                         alert(translations.success_clearing);
                     } else {
-                        console.error('Failed to clear logs:', response);
-                        alert(translations.error_clearing + ': ' + response.data);
+                        alert(translations.error_clearing);
                     }
                 } catch (error) {
-                    console.error('Error clearing logs:', error);
+                    console.error('Clear logs failed:', error);
                     alert(translations.error_clearing);
                 }
-            }
-        };
-
-        const getLogTypeIcon = (type) => {
-            switch ((type || '').toLowerCase()) {
-                case 'info': return '⚪️';
-                case 'debug': return '🔵';
-                case 'warning': return '⚠️';
-                case 'error': return '🔴';
-                default: return '•';
-            }
-        };
-
-        const getLogTypeColor = (type) => {
-            switch ((type || '').toLowerCase()) {
-                case 'info': return '#3498db';
-                case 'debug': return '#2ecc71';
-                case 'warning': return '#f39c12';
-                case 'error': return '#e74c3c';
-                default: return '#333333';
-            }
-        };
-
-        const exportLogs = (format) => {
-            let content;
-            if (format === 'csv') {
-                content = 'Date,Type,Message\n' + filteredLogs.map(log =>
-                    `"${log.date || ''}","${log.level || ''}","${(log.message || '').replace(/"/g, '""')}"`
-                ).join('\n');
-            } else if (format === 'json') {
-                content = JSON.stringify(filteredLogs, null, 2);
-            }
-
-            const blob = new Blob([content], { type: format === 'csv' ? 'text/csv;charset=utf-8;' : 'application/json' });
-            const link = document.createElement('a');
-            if (link.download !== undefined) {
-                const url = URL.createObjectURL(blob);
-                link.setAttribute('href', url);
-                link.setAttribute('download', `logs.${format}`);
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
             }
         };
 
@@ -212,41 +154,39 @@
             setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
         };
 
-        const renderLogItem = (log) => {
-            if (!log || typeof log !== 'object') {
-                return null;
+        const getLogTypeIcon = (level) => {
+            switch (level) {
+                case 'error': return '🔴';
+                case 'warning': return '🟠';
+                case 'info': return '🔵';
+                default: return '⚪';
             }
-            return React.createElement('div', {
-                key: log.id || Math.random(),
-                className: "log-item",
-                style: {
-                    padding: '10px',
-                    borderBottom: '1px solid #eee',
-                    display: 'flex',
-                    alignItems: 'center',
-                    backgroundColor: theme === 'light' ? '#fff' : '#333',
-                    color: theme === 'light' ? '#333' : '#fff'
-                }
-            }, [
-                React.createElement('span', {
-                    style: { flexBasis: '180px', color: theme === 'light' ? '#7f8c8d' : '#bdc3c7' }
-                }, log.date || 'N/A'),
-                React.createElement('span', {
-                    style: {
-                        flexBasis: '80px',
-                        textAlign: 'center',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        backgroundColor: getLogTypeColor(log.level),
-                        color: '#fff',
-                        marginRight: '10px'
+        };
+
+        const refreshLogs = async () => {
+            try {
+                const response = await $.ajax({
+                    url: ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'rss_news_importer_refresh_logs',
+                        security: nonce
                     }
-                }, [getLogTypeIcon(log.level), ' ', log.level || 'Unknown']),
-                React.createElement('span', { style: { flex: 1 } }, log.message || 'No message')
-            ]);
+                });
+                if (response.success) {
+                    setLogs(response.data);
+                    alert(translations.logs_refreshed);
+                } else {
+                    alert(translations.error_refreshing);
+                }
+            } catch (error) {
+                console.error('Ajax request failed:', error);
+                alert(translations.error_refreshing);
+            }
         };
 
         return React.createElement('div', {
+            className: `log-viewer ${theme}`,
             style: {
                 fontFamily: 'Arial, sans-serif',
                 maxWidth: '100%',
@@ -254,101 +194,269 @@
                 padding: '20px',
                 boxSizing: 'border-box',
                 backgroundColor: theme === 'light' ? '#f0f0f0' : '#222',
-                color: theme === 'light' ? '#333' : '#fff'
+                color: theme === 'light' ? '#333' : '#fff',
+                transition: 'all 0.3s ease'
             }
         }, [
-            React.createElement('h2', null, translations.log_viewer),
-            React.createElement('div', { style: { marginBottom: '20px' } }, [
+            React.createElement('h2', { key: 'title', style: { marginBottom: '20px' } }, translations.log_viewer),
+            React.createElement('div', { 
+                key: 'controls', 
+                style: { 
+                    marginBottom: '20px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    alignItems: 'center'
+                } 
+            }, [
                 React.createElement('input', {
+                    key: 'search',
                     type: "text",
                     placeholder: translations.search_logs,
                     value: searchTerm,
                     onChange: (e) => setSearchTerm(e.target.value),
-                    style: { padding: '8px', marginRight: '10px' }
+                    style: { 
+                        padding: '8px', 
+                        flex: '1 1 200px',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc'
+                    }
                 }),
                 React.createElement('select', {
+                    key: 'level-filter',
                     value: filterOptions.logLevel,
                     onChange: (e) => setFilterOptions(prev => ({ ...prev, logLevel: e.target.value })),
-                    style: { padding: '8px', marginRight: '10px' }
+                    style: { 
+                        padding: '8px', 
+                        flex: '0 1 150px',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc'
+                    }
                 }, [
-                    React.createElement('option', { value: "all" }, translations.all_levels),
-                    React.createElement('option', { value: "info" }, translations.info),
-                    React.createElement('option', { value: "debug" }, translations.debug),
-                    React.createElement('option', { value: "warning" }, translations.warning),
-                    React.createElement('option', { value: "error" }, translations.error)
+                    React.createElement('option', { key: 'all', value: "all" }, translations.all_levels),
+                    React.createElement('option', { key: 'info', value: "info" }, translations.info),
+                    React.createElement('option', { key: 'warning', value: "warning" }, translations.warning),
+                    React.createElement('option', { key: 'error', value: "error" }, translations.error)
                 ]),
                 React.createElement('input', {
+                    key: 'date-start',
                     type: "date",
                     value: filterOptions.dateRange.start || '',
                     onChange: (e) => setFilterOptions(prev => ({ ...prev, dateRange: { ...prev.dateRange, start: e.target.value } })),
-                    style: { padding: '8px', marginRight: '10px' }
+                    style: { 
+                        padding: '8px', 
+                        flex: '0 1 auto',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc'
+                    }
                 }),
                 React.createElement('input', {
+                    key: 'date-end',
                     type: "date",
                     value: filterOptions.dateRange.end || '',
                     onChange: (e) => setFilterOptions(prev => ({ ...prev, dateRange: { ...prev.dateRange, end: e.target.value } })),
-                    style: { padding: '8px', marginRight: '10px' }
+                    style: { 
+                        padding: '8px', 
+                        flex: '0 1 auto',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc'
+                    }
                 }),
                 React.createElement('button', {
+                    key: 'refresh-toggle',
                     onClick: () => setIsAutoRefresh(prev => !prev),
-                    style: { padding: '8px', marginRight: '10px' }
+                    style: { 
+                        padding: '8px', 
+                        flex: '0 1 auto',
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: isAutoRefresh ? '#4CAF50' : '#f44336',
+                        color: 'white',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.3s'
+                    }
                 }, isAutoRefresh ? translations.pause_refresh : translations.resume_refresh),
                 React.createElement('button', {
+                    key: 'theme-toggle',
                     onClick: toggleTheme,
-                    style: { padding: '8px', marginRight: '10px' }
+                    style: { 
+                        padding: '8px', 
+                        flex: '0 1 auto',
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: theme === 'light' ? '#333' : '#f0f0f0',
+                        color: theme === 'light' ? '#fff' : '#333',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.3s'
+                    }
                 }, theme === 'light' ? translations.dark_mode : translations.light_mode)
             ]),
-            React.createElement('div', { style: { marginBottom: '20px' } }, [
+            React.createElement('div', { 
+                key: 'actions', 
+                style: { 
+                    marginBottom: '20px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '10px'
+                } 
+            }, [
                 React.createElement('button', {
+                    key: 'sort-toggle',
                     onClick: () => setSortOption({ field: 'date', order: sortOption.order === 'asc' ? 'desc' : 'asc' }),
-                    style: { padding: '8px', marginRight: '10px' }
-                }, `${translations.sort_by_date} (${sortOption.order === 'asc' ? '▲' : '▼'})`),
+                    style: { 
+                        padding: '8px', 
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: '#2196F3',
+                        color: 'white',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.3s'
+                    }
+                }, `${translations.sort_by_date} (${sortOption.order === 'asc' ? translations.ascending : translations.descending})`),
                 React.createElement('button', {
+                    key: 'refresh-logs',
+                    onClick: refreshLogs,
+                    style: { 
+                        padding: '8px', 
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: '#4CAF50',
+                        color: 'white',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.3s'
+                    }
+                }, translations.refresh_logs),
+                React.createElement('button', {
+                    key: 'export-csv',
                     onClick: () => exportLogs('csv'),
-                    style: { padding: '8px', marginRight: '10px' }
+                    style: { 
+                        padding: '8px', 
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: '#FF9800',
+                        color: 'white',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.3s'
+                    }
                 }, translations.export_csv),
                 React.createElement('button', {
+                    key: 'export-json',
                     onClick: () => exportLogs('json'),
-                    style: { padding: '8px', marginRight: '10px' }
+                    style: { 
+                        padding: '8px', 
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: '#9C27B0',
+                        color: 'white',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.3s'
+                    }
                 }, translations.export_json),
                 React.createElement('button', {
+                    key: 'clear-logs',
                     onClick: clearLogs,
-                    style: { padding: '8px', backgroundColor: '#e74c3c', color: 'white' }
+                    style: { 
+                        padding: '8px', 
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: '#e74c3c',
+                        color: 'white',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.3s'
+                    }
                 }, translations.clear_logs)
             ]),
-            React.createElement('div', { style: { marginBottom: '20px' } }, [
-                React.createElement('h3', null, translations.statistics),
-                React.createElement('p', null, `${translations.total_logs}: ${statistics.totalLogs}`),
-                React.createElement('p', null, `${translations.errors}: ${statistics.errorCount}`),
-                React.createElement('p', null, `${translations.warnings}: ${statistics.warningCount}`),
-                React.createElement('p', null, `${translations.info_logs}: ${statistics.infoCount}`)
+            React.createElement('div', { 
+                key: 'statistics', 
+                style: { 
+                    marginBottom: '20px',
+                    backgroundColor: theme === 'light' ? '#fff' : '#333',
+                    padding: '15px',
+                    borderRadius: '4px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                } 
+            }, [
+                React.createElement('h3', { key: 'stats-title', style: { marginBottom: '10px' } }, translations.statistics),
+                React.createElement('p', { key: 'total-logs' }, `${translations.total_logs}: ${statistics.totalLogs}`),
+                React.createElement('p', { key: 'errors' }, `${translations.errors}: ${statistics.errorCount}`),
+                React.createElement('p', { key: 'warnings' }, `${translations.warnings}: ${statistics.warningCount}`),
+                React.createElement('p', { key: 'infos' }, `${translations.info_logs}: ${statistics.infoCount}`)
             ]),
             React.createElement('div', {
+                key: 'log-list',
                 ref: logListRef,
-                style: { border: '1px solid #ddd', borderRadius: '4px', overflow: 'hidden' }
-            }, filteredLogs.slice(0, currentPage * logsPerPage).map(renderLogItem)),
+                style: { 
+                    border: '1px solid #ddd', 
+                    borderRadius: '4px', 
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease'
+                }
+            }, filteredLogs.slice(0, currentPage * logsPerPage).map((log, index) =>
+                React.createElement('div', {
+                    key: index,
+                    style: {
+                        padding: '10px',
+                        borderBottom: '1px solid #eee',
+                        display: 'flex',
+                        alignItems: 'center',
+                        backgroundColor: theme === 'light' ? '#fff' : '#333',
+                        color: theme === 'light' ? '#333' : '#fff',
+                        transition: 'background-color 0.3s ease'
+                    }
+                }, [
+                    React.createElement('span', {
+                        key: 'date',
+                        style: { 
+                            flexBasis: '180px', 
+                            color: theme === 'light' ? '#7f8c8d' : '#bdc3c7'
+                        }
+                    }, log.date),
+                    React.createElement('span', {
+                        key: 'level',
+                        style: {
+                            flexBasis: '80px',
+                            textAlign: 'center',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            backgroundColor: log.level === 'error' ? '#e74c3c' : log.level === 'warning' ? '#f39c12' : '#3498db',
+                            color: '#fff',
+                            marginRight: '10px'
+                        }
+                    }, [getLogTypeIcon(log.level), ' ', log.level]),
+                    React.createElement('span', { key: 'message', style: { flex: 1 } }, log.message)
+                ])
+            )),
             filteredLogs.length > currentPage * logsPerPage && React.createElement('button', {
+                key: 'load-more',
                 onClick: loadMoreLogs,
-                style: { marginTop: '20px', padding: '10px' }
+                style: { 
+                    marginTop: '20px', 
+                    padding: '10px',
+                    width: '100%',
+                    borderRadius: '4px',
+                    border: 'none',
+                    backgroundColor: '#3498db',
+                    color: 'white',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.3s'
+                }
             }, translations.load_more)
         ]);
-    }
-
-    window.LogViewer = LogViewer;
-
-    $(document).ready(() => {
-        const rootElement = document.getElementById('log-viewer-root');
-        if (rootElement) {
-            ReactDOM.render(
-                React.createElement(LogViewer, {
-                    translations: rss_news_importer_ajax.i18n,
-                    ajaxUrl: rss_news_importer_ajax.ajax_url,
-                    nonce: rss_news_importer_ajax.nonce
-                }),
-                rootElement
-            );
-        } else {
         }
-    });
-
-})(window, document, jQuery);
+    
+        function getLogTypeIcon(level) {
+            switch (level) {
+                case 'error':
+                    return '🔴';
+                case 'warning':
+                    return '🟠';
+                case 'info':
+                    return '🔵';
+                default:
+                    return '⚪';
+            }
+        }
+    
+        window.LogViewer = LogViewer;
+    
+    })(window, document, jQuery);

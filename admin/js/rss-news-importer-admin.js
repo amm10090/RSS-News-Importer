@@ -1,17 +1,14 @@
 (function ($) {
     'use strict';
 
-    // 定义 rssImporter 对象
     const rssImporter = {
-        // 初始化方法
         init() {
             this.cacheDom();
             this.bindEvents();
             this.initSortable();
-            this.loadSavedFeeds();
+            this.initTabs();
         },
 
-        // 缓存 DOM 元素
         cacheDom() {
             this.feedsList = $('#rss-feeds-list');
             this.addFeedBtn = $('#add-feed');
@@ -19,13 +16,14 @@
             this.newFeedName = $('#new-feed-name');
             this.importNowBtn = $('#import-now');
             this.importResults = $('#import-results');
-            this.importProgress = $('.progress-bar');
-            this.importProgressText = $('.progress-text');
             this.importProgressContainer = $('.import-progress-container');
+            this.progressBar = $('.progress-bar');
+            this.progressText = $('.progress-text');
             this.form = $('#rss-news-importer-form');
+            this.tabs = $('.nav-tab-wrapper .nav-tab');
+            this.tabPanes = $('.tab-content .tab-pane');
         },
 
-        // 绑定事件
         bindEvents() {
             this.addFeedBtn.on('click', () => this.addFeed());
             $(document).on('click', '.remove-feed', (e) => this.removeFeed($(e.currentTarget).closest('.feed-item')));
@@ -34,7 +32,6 @@
             this.form.on('submit', (e) => this.saveSettings(e));
         },
 
-        // 初始化可排序功能
         initSortable() {
             this.feedsList.sortable({
                 handle: '.handle',
@@ -42,23 +39,17 @@
             });
         },
 
-        // 加载保存的源
-        loadSavedFeeds() {
-            // 此方法已在PHP中实现，不需要在JS中重复
-        },
-
-        // 获取 nonce
-        getNonce() {
-            return $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'rss_news_importer_generate_nonce'
-                }
+        initTabs() {
+            this.tabs.on('click', (e) => {
+                e.preventDefault();
+                const target = $(e.currentTarget).attr('href');
+                this.tabs.removeClass('nav-tab-active');
+                $(e.currentTarget).addClass('nav-tab-active');
+                this.tabPanes.removeClass('active');
+                $(target).addClass('active');
             });
         },
 
-        // 添加新源
         addFeed() {
             const feedUrl = this.newFeedUrl.val().trim();
             const feedName = this.newFeedName.val().trim();
@@ -80,7 +71,6 @@
                 .catch(this.handleAjaxError.bind(this));
         },
 
-        // 移除源
         removeFeed(feedItem) {
             const feedUrl = feedItem.data('feed-url');
             if (!feedUrl) {
@@ -102,7 +92,6 @@
                 .catch(this.handleAjaxError.bind(this));
         },
 
-        // 预览源
         previewFeed(feedItem) {
             const feedUrl = feedItem.data('feed-url');
             if (!feedUrl) {
@@ -121,7 +110,6 @@
                 .catch(this.handleAjaxError.bind(this));
         },
 
-        // 更新源顺序
         updateFeedOrder() {
             const feedOrder = this.feedsList.sortable('toArray', { attribute: 'data-feed-url' });
             this.ajaxRequest('rss_news_importer_update_feed_order', { order: feedOrder })
@@ -135,12 +123,11 @@
                 .catch(this.handleAjaxError.bind(this));
         },
 
-        // 立即导入
         importNow() {
             this.importNowBtn.prop('disabled', true).text(rss_news_importer_ajax.i18n.importing_text);
             this.importProgressContainer.show();
-            this.importProgress.css('width', '0%');
-            this.importProgressText.text('0%');
+            this.progressBar.css('width', '0%');
+            this.progressText.text('0%');
             this.importResults.hide();
 
             this.ajaxRequest('rss_news_importer_import_now', {}, {
@@ -149,8 +136,7 @@
                     xhr.upload.addEventListener('progress', (evt) => {
                         if (evt.lengthComputable) {
                             const percentComplete = Math.round((evt.loaded / evt.total) * 100);
-                            this.importProgress.css('width', percentComplete + '%');
-                            this.importProgressText.text(percentComplete + '%');
+                            this.updateProgress(percentComplete);
                         }
                     }, false);
                     return xhr;
@@ -168,16 +154,18 @@
                     this.importNowBtn.prop('disabled', false).text(rss_news_importer_ajax.i18n.import_now_text);
                     setTimeout(() => {
                         this.importProgressContainer.hide();
-                        this.importProgress.css('width', '0%');
-                        this.importProgressText.text('0%');
+                        this.updateProgress(0);
                     }, 2000);
                 });
         },
 
-        // 保存设置
+        updateProgress(percent) {
+            this.progressBar.css('width', percent + '%');
+            this.progressText.text(percent + '%');
+        },
+
         saveSettings(e) {
             e.preventDefault();
-            // 首先获取 nonce
             this.getNonce().then((response) => {
                 if (response.success) {
                     const formData = new FormData(this.form[0]);
@@ -205,7 +193,16 @@
             }).catch(this.handleAjaxError.bind(this));
         },
 
-        // 显示反馈信息
+        getNonce() {
+            return $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'rss_news_importer_generate_nonce'
+                }
+            });
+        },
+
         showFeedback(message, type = 'success') {
             const feedback = $(`<div class="notice notice-${type} is-dismissible"><p>${message}</p></div>`);
             $('.wrap.rss-news-importer-admin').prepend(feedback);
@@ -217,7 +214,6 @@
             }, 3000);
         },
 
-        // AJAX 请求封装
         ajaxRequest(action, data = {}, options = {}) {
             const defaultData = {
                 action: action,
@@ -234,14 +230,12 @@
             return $.ajax(ajaxOptions);
         },
 
-        // 处理 AJAX 错误
         handleAjaxError(jqXHR, textStatus, errorThrown) {
             console.error('AJAX 错误:', textStatus, errorThrown);
             this.showFeedback(rss_news_importer_ajax.i18n.error_text, 'error');
         }
     };
 
-    // 当文档加载完成时初始化 rssImporter 对象
     $(document).ready(() => {
         rssImporter.init();
     });

@@ -43,6 +43,18 @@ wp_localize_script('rss-news-importer-log-viewer-component', 'rss_news_importer_
         'errors' => __('错误', 'rss-news-importer'),
         'warnings' => __('警告', 'rss-news-importer'),
         'info_logs' => __('信息', 'rss-news-importer'),
+        'sort_by_date' => __('按日期排序', 'rss-news-importer'),
+        'ascending' => __('升序', 'rss-news-importer'),
+        'descending' => __('降序', 'rss-news-importer'),
+        'dark_mode' => __('暗色模式', 'rss-news-importer'),
+        'light_mode' => __('亮色模式', 'rss-news-importer'),
+        'refresh_logs' => __('刷新日志', 'rss-news-importer'),
+        'pause_refresh' => __('暂停自动刷新', 'rss-news-importer'),
+        'resume_refresh' => __('恢复自动刷新', 'rss-news-importer'),
+        'log_viewer' => __('日志查看器', 'rss-news-importer'),
+        'statistics' => __('统计信息', 'rss-news-importer'),
+        'logs_refreshed' => __('日志已刷新', 'rss-news-importer'),
+        'error_refreshing' => __('刷新日志失败', 'rss-news-importer'),
     ),
 ));
 ?>

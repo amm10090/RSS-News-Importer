@@ -1,169 +1,192 @@
 <?php
 
-/**
- * Manages the queue for RSS feed imports.
- *
- * @link       https://blog.amoze.cc/
- * @since      1.0.0
- *
- * @package    RSS_News_Importer
- * @subpackage RSS_News_Importer/includes
- */
+if (!defined('ABSPATH')) {
+    exit;
+}
 
-class RSS_News_Importer_Queue {
+class RSS_News_Importer_Queue
+{
 
-    /**
-     * The option name for storing the queue in the database.
-     *
-     * @since    1.0.0
-     * @access   private
-     * @var      string    $queue_option_name    The name of the option that stores the queue.
-     */
     private $queue_option_name = 'rss_news_importer_queue';
-
-    /**
-     * The maximum number of items allowed in the queue.
-     *
-     * @since    1.0.0
-     * @access   private
-     * @var      int    $max_queue_size    The maximum number of items in the queue.
-     */
     private $max_queue_size = 100;
+    private $logger;
+    private $cache;
 
-    /**
-     * Initialize the class and set its properties.
-     *
-     * @since    1.0.0
-     */
-    public function __construct() {
-        // 如果需要在构造函数中初始化任何内容，可以在这里添加
+    // 构造函数,初始化队列
+    public function __construct($logger, $cache)
+    {
+        $this->logger = $logger;
+        $this->cache = $cache;
     }
 
-    /**
-     * Add an RSS feed URL to the queue.
-     *
-     * @since    1.0.0
-     * @param    string    $feed_url    The URL of the RSS feed to add to the queue.
-     * @return   bool      True if the feed was added, false if it was already in the queue or the queue is full.
-     */
-    public function add_to_queue($feed_url) {
+    // 添加RSS源URL到队列
+    public function add_to_queue($feed_url)
+    {
         $queue = $this->get_queue();
         if (!in_array($feed_url, $queue) && count($queue) < $this->max_queue_size) {
             $queue[] = $feed_url;
-            update_option($this->queue_option_name, $queue);
+            $this->update_queue($queue);
+            $this->logger->log("添加到队列: $feed_url", 'info');
             return true;
         }
+        $this->logger->log("无法添加到队列: $feed_url", 'warning');
         return false;
     }
-    
-    /**
-     * Get the current queue.
-     *
-     * @since    1.0.0
-     * @return   array    The current queue of RSS feed URLs.
-     */
-    public function get_queue() {
+
+    // 获取当前队列
+    public function get_queue()
+    {
         return get_option($this->queue_option_name, array());
     }
-    
-    /**
-     * Remove a specific RSS feed URL from the queue.
-     *
-     * @since    1.0.0
-     * @param    string    $feed_url    The URL of the RSS feed to remove from the queue.
-     * @return   bool      True if the feed was removed, false if it wasn't in the queue.
-     */
-    public function remove_from_queue($feed_url) {
+
+    // 从队列中移除特定的RSS源URL
+    public function remove_from_queue($feed_url)
+    {
         $queue = $this->get_queue();
         $key = array_search($feed_url, $queue);
         if ($key !== false) {
             unset($queue[$key]);
-            update_option($this->queue_option_name, array_values($queue));
+            $this->update_queue(array_values($queue));
+            $this->logger->log("从队列中移除: $feed_url", 'info');
             return true;
         }
+        $this->logger->log("无法从队列中移除: $feed_url", 'warning');
         return false;
     }
-    
-    /**
-     * Process all RSS feed URLs in the queue.
-     *
-     * @since    1.0.0
-     * @param    RSS_News_Importer_Post_Importer    $importer    An instance of the post importer.
-     * @return   array    An array of results, with feed URLs as keys and import results as values.
-     */
-    public function process_queue($importer) {
+
+    // 处理队列中的所有RSS源URL
+    public function process_queue($importer)
+    {
         $queue = $this->get_queue();
         $results = array();
 
         foreach ($queue as $feed_url) {
-            $result = $importer->import_feed($feed_url);
-            $results[$feed_url] = $result;
-            $this->remove_from_queue($feed_url);
+            try {
+                $result = $importer->import_feed($feed_url);
+                $results[$feed_url] = $result;
+                $this->remove_from_queue($feed_url);
+                $this->logger->log("处理队列项目: $feed_url, 结果: $result", 'info');
+            } catch (Exception $e) {
+                $this->logger->log("处理队列项目失败: $feed_url, 错误: " . $e->getMessage(), 'error');
+                $results[$feed_url] = false;
+            }
         }
 
         return $results;
     }
-    private function display_queue_status() {
-        $queue_status = $this->dashboard_manager->get_queue_status();
-        ?>
-        <div class="postbox">
-            <h2 class="hndle"><span><?php _e('导入队列状态', 'rss-news-importer'); ?></span></h2>
-            <div class="inside">
-                <p><?php _e('当前队列项目数：', 'rss-news-importer'); ?> <?php echo esc_html($queue_status['current_size']); ?></p>
-                <p><?php _e('最大队列容量：', 'rss-news-importer'); ?> <?php echo esc_html($queue_status['max_size']); ?></p>
-                <p><?php _e('队列容量使用：', 'rss-news-importer'); ?> <?php echo esc_html($queue_status['usage_percentage']); ?>%</p>
-            </div>
-        </div>
-        <?php
+
+    // 清空整个队列
+    public function clear_queue()
+    {
+        $result = delete_option($this->queue_option_name);
+        if ($result) {
+            $this->logger->log("队列已清空", 'info');
+        } else {
+            $this->logger->log("清空队列失败", 'error');
+        }
+        return $result;
     }
 
-    /**
-     * Clear the entire queue.
-     *
-     * @since    1.0.0
-     * @return   bool    True if the queue was cleared, false if there was an error.
-     */
-    public function clear_queue() {
-        return update_option($this->queue_option_name, array());
-    }
-
-    /**
-     * Get the current size of the queue.
-     *
-     * @since    1.0.0
-     * @return   int    The number of items currently in the queue.
-     */
-    public function get_queue_size() {
+    // 获取当前队列大小
+    public function get_queue_size()
+    {
         return count($this->get_queue());
     }
 
-    /**
-     * Set the maximum size of the queue.
-     *
-     * @since    1.0.0
-     * @param    int    $size    The new maximum size of the queue.
-     */
-    public function set_max_queue_size($size) {
+    // 设置最大队列大小
+    public function set_max_queue_size($size)
+    {
         $this->max_queue_size = max(1, intval($size));
+        $this->logger->log("设置最大队列大小: $this->max_queue_size", 'info');
     }
 
-    /**
-     * Get the maximum size of the queue.
-     *
-     * @since    1.0.0
-     * @return   int    The maximum number of items allowed in the queue.
-     */
-    public function get_max_queue_size() {
+    // 获取最大队列大小
+    public function get_max_queue_size()
+    {
         return $this->max_queue_size;
     }
 
-    /**
-     * Check if the queue is full.
-     *
-     * @since    1.0.0
-     * @return   bool    True if the queue is full, false otherwise.
-     */
-    public function is_queue_full() {
+    // 检查队列是否已满
+    public function is_queue_full()
+    {
         return $this->get_queue_size() >= $this->max_queue_size;
+    }
+
+    // 更新队列
+    private function update_queue($queue)
+    {
+        update_option($this->queue_option_name, $queue);
+        $this->cache->delete('queue_status'); // 清除缓存的队列状态
+    }
+
+    // 获取队列状态
+    public function get_queue_status()
+    {
+        $cached_status = $this->cache->get('queue_status');
+        if ($cached_status !== false) {
+            return $cached_status;
+        }
+
+        $queue_size = $this->get_queue_size();
+        $status = array(
+            'current_size' => $queue_size,
+            'max_size' => $this->max_queue_size,
+            'usage_percentage' => ($this->max_queue_size > 0) ? ($queue_size / $this->max_queue_size) * 100 : 0
+        );
+
+        $this->cache->set('queue_status', $status, 300); // 缓存5分钟
+        return $status;
+    }
+
+    // 获取下一个要处理的队列项
+    public function get_next_item()
+    {
+        $queue = $this->get_queue();
+        return !empty($queue) ? $queue[0] : null;
+    }
+
+    // 重新排序队列
+    public function reorder_queue($new_order)
+    {
+        if (count($new_order) !== $this->get_queue_size()) {
+            $this->logger->log("重新排序队列失败: 新顺序与当前队列大小不匹配", 'error');
+            return false;
+        }
+
+        $this->update_queue($new_order);
+        $this->logger->log("队列已重新排序", 'info');
+        return true;
+    }
+
+    // 获取队列处理进度
+    public function get_processing_progress()
+    {
+        $total = $this->get_queue_size();
+        $processed = $this->get_processed_count();
+        return array(
+            'total' => $total,
+            'processed' => $processed,
+            'percentage' => ($total > 0) ? ($processed / $total) * 100 : 0
+        );
+    }
+
+    // 获取已处理的项目数量
+    private function get_processed_count()
+    {
+        return intval(get_option('rss_news_importer_processed_count', 0));
+    }
+
+    // 增加已处理的项目数量
+    public function increment_processed_count()
+    {
+        $count = $this->get_processed_count() + 1;
+        update_option('rss_news_importer_processed_count', $count);
+    }
+
+    // 重置已处理的项目数量
+    public function reset_processed_count()
+    {
+        update_option('rss_news_importer_processed_count', 0);
+        $this->logger->log("已重置处理计数", 'info');
     }
 }
