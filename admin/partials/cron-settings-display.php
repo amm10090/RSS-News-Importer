@@ -8,43 +8,19 @@ if (!defined('ABSPATH')) {
 $rss_update_manager = new RSS_News_Importer_Cron_Manager($this->plugin_name, $this->version);
 
 // 获取当前RSS更新设置
-$current_schedule = $rss_update_manager->get_current_schedule();
+$options = get_option('rss_news_importer_options', array());
+$current_schedule = isset($options['rss_update_schedule']) ? $options['rss_update_schedule'] : 'hourly';
 $next_run = $rss_update_manager->get_next_scheduled_time();
 $cron_status = $rss_update_manager->get_cron_status();
 $available_schedules = wp_get_schedules();
-
-// 获取插件选项
-$options = get_option('rss_news_importer_options', array());
 $update_method = isset($options['update_method']) ? $options['update_method'] : 'bulk';
 $custom_interval = isset($options['custom_cron_interval']) ? $options['custom_cron_interval'] : '';
 
-// 处理表单提交
-if (isset($_POST['update_rss_cron_settings'])) {
-    check_admin_referer('rss_news_importer_cron_settings');
-
-    $new_schedule = sanitize_text_field($_POST['rss_update_schedule']);
-    $new_update_method = sanitize_text_field($_POST['update_method']);
-    $new_custom_interval = intval($_POST['custom_cron_interval']);
-
-    // 更新选项
-    $options['update_method'] = $new_update_method;
-    $options['custom_cron_interval'] = $new_custom_interval;
-
-    if (update_option('rss_news_importer_options', $options)) {
-        add_settings_error('rss_news_importer_messages', 'rss_news_importer_message', __('RSS更新设置已保存。', 'rss-news-importer'), 'updated');
-    }
-
-    // 更新定时任务计划
-    if ($new_schedule === 'custom') {
-        $rss_update_manager->update_schedule('rss_custom_interval');
-    } else {
-        $rss_update_manager->update_schedule($new_schedule);
-    }
-}
-
 // 处理手动更新请求
 if (isset($_POST['run_rss_update_now'])) {
-    check_admin_referer('rss_news_importer_run_update');
+    if (!check_admin_referer('rss_news_importer_run_update', 'rss_news_importer_run_nonce')) {
+        wp_die(__('安全检查失败', 'rss-news-importer'));
+    }
 
     // 执行手动更新
     $result = $rss_update_manager->manual_update();
@@ -52,19 +28,20 @@ if (isset($_POST['run_rss_update_now'])) {
     if ($result) {
         add_settings_error('rss_news_importer_messages', 'rss_news_importer_message', __('RSS更新任务已手动触发。请查看日志以了解详情。', 'rss-news-importer'), 'updated');
     } else {
-        add_settings_error('rss_news_importer_messages', 'rss_news_importer_message', __('触发RSS更新任务失败。请查看日志以了解详情。', 'rss-news-importer'), 'error');
+        add_settings_error('rss_news_importer_messages', 'rss_news_importer_error', __('触发RSS更新任务失败。请查看日志以了解详情。', 'rss-news-importer'), 'error');
     }
 }
 
+// 显示设置错误消息
 settings_errors('rss_news_importer_messages');
 ?>
 
 <div class="wrap">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
 
-    <form method="post" action="">
-        <?php wp_nonce_field('rss_news_importer_cron_settings'); ?>
-        <table class="form-table">
+    <!-- Cron设置表单 -->
+    <form id="rss-cron-settings-form" method="post" action="">
+        <?php wp_nonce_field('rss_news_importer_cron_settings', 'rss_news_importer_cron_nonce'); ?> <table class="form-table">
             <tr>
                 <th scope="row"><label for="rss_update_schedule"><?php _e('RSS更新频率', 'rss-news-importer'); ?></label></th>
                 <td>
@@ -74,7 +51,7 @@ settings_errors('rss_news_importer_messages');
                                 <?php echo esc_html($schedule_data['display']); ?>
                             </option>
                         <?php endforeach; ?>
-                        <option value="custom" <?php selected($current_schedule, 'rss_custom_interval'); ?>>
+                        <option value="custom" <?php selected($current_schedule, 'custom'); ?>>
                             <?php _e('自定义', 'rss-news-importer'); ?>
                         </option>
                     </select>
@@ -83,7 +60,10 @@ settings_errors('rss_news_importer_messages');
             <tr id="custom_interval_row" style="display: none;">
                 <th scope="row"><label for="custom_cron_interval"><?php _e('自定义间隔（分钟）', 'rss-news-importer'); ?></label></th>
                 <td>
-                    <input type="number" name="custom_cron_interval" id="custom_cron_interval" value="<?php echo esc_attr($custom_interval); ?>" min="1" step="1">
+                    <input type="number" name="custom_cron_interval" id="custom_cron_interval"
+                        value="<?php echo esc_attr($custom_interval); ?>"
+                        min="1" step="1"
+                        <?php echo ($current_schedule !== 'custom') ? 'disabled' : ''; ?>>
                 </td>
             </tr>
             <tr>
@@ -98,9 +78,13 @@ settings_errors('rss_news_importer_messages');
             </tr>
         </table>
 
-        <?php submit_button(__('保存RSS更新设置', 'rss-news-importer'), 'primary', 'update_rss_cron_settings'); ?>
+        <?php submit_button(__('保存RSS更新设置', 'rss-news-importer'), 'primary', 'submit_rss_cron_settings'); ?>
     </form>
 
+    <!-- 设置消息显示区域 -->
+    <div id="settings-message" style="display:none;"></div>
+
+    <!-- RSS更新状态显示 -->
     <h2><?php _e('RSS更新状态', 'rss-news-importer'); ?></h2>
     <table class="widefat">
         <tr>
@@ -121,6 +105,7 @@ settings_errors('rss_news_importer_messages');
         </tr>
     </table>
 
+    <!-- 手动RSS更新表单 -->
     <h2><?php _e('手动RSS更新', 'rss-news-importer'); ?></h2>
     <form method="post" action="">
         <?php wp_nonce_field('rss_news_importer_run_update', 'rss_news_importer_run_nonce'); ?>
@@ -133,6 +118,7 @@ settings_errors('rss_news_importer_messages');
 
 <script type="text/javascript">
     jQuery(document).ready(function($) {
+        // 切换自定义间隔字段的显示状态
         function toggleCustomIntervalField() {
             if ($('#rss_update_schedule').val() === 'custom') {
                 $('#custom_interval_row').show();
@@ -140,8 +126,41 @@ settings_errors('rss_news_importer_messages');
                 $('#custom_interval_row').hide();
             }
         }
+        //当选择"自定义"时启用自定义间隔输入
+        $('#rss_update_schedule').change(function() {
+            if ($(this).val() === 'custom') {
+                $('#custom_cron_interval').prop('disabled', false);
+            } else {
+                $('#custom_cron_interval').prop('disabled', true);
+            }
+        });
 
+        // 绑定更新频率选择变化事件
         $('#rss_update_schedule').change(toggleCustomIntervalField);
         toggleCustomIntervalField(); // 页面加载时执行一次
+
+        // 处理表单提交
+        $('#rss-cron-settings-form').on('submit', function(e) {
+            e.preventDefault();
+            var formData = $(this).serialize();
+            formData += '&action=save_rss_cron_settings&security=' + $('#rss_news_importer_cron_nonce').val();
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    console.log('AJAX response:', response);
+                    if (response.success) {
+                        $('#settings-message').html('<div class="notice notice-success"><p>' + response.data.message + '</p></div>').show();
+                    } else {
+                        $('#settings-message').html('<div class="notice notice-error"><p>' + response.data.message + '</p></div>').show();
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('AJAX error:', textStatus, errorThrown);
+                    $('#settings-message').html('<div class="notice notice-error"><p><?php _e('保存设置时发生错误。请稍后重试。', 'rss-news-importer'); ?></p></div>').show();
+                }
+            });
+        });
     });
 </script>

@@ -179,6 +179,7 @@
                         processData: false,
                         contentType: false,
                         success: (response) => {
+                            console.log('AJAX response:', response);
                             if (response.success) {
                                 this.showFeedback(response.data, 'success');
                             } else {

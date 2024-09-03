@@ -32,8 +32,19 @@ class RSS_News_Importer_Cron_Manager
 
     public function schedule_update($recurrence = 'hourly')
     {
-        if (!wp_next_scheduled($this->cron_hook)) {
-            wp_schedule_event(time(), $recurrence, $this->cron_hook);
+        if ($recurrence === 'custom') {
+            $interval = get_option('rss_news_importer_options')['custom_cron_interval'] ?? 60;
+            $recurrence = 'every_' . $interval . '_minutes';
+
+            if (!wp_next_scheduled($this->cron_hook)) {
+                wp_schedule_event(time(), $recurrence, $this->cron_hook);
+            }
+
+            $this->logger->log("自定义RSS更新任务已计划，间隔: $interval 分钟", 'info');
+        } else {
+            if (!wp_next_scheduled($this->cron_hook)) {
+                wp_schedule_event(time(), $recurrence, $this->cron_hook);
+            }
             $this->logger->log("定时RSS更新任务已计划，频率: $recurrence", 'info');
         }
     }
@@ -115,11 +126,15 @@ class RSS_News_Importer_Cron_Manager
         return wp_next_scheduled($this->cron_hook);
     }
 
-    public function update_schedule($new_schedule)
+    public function update_schedule($schedule)
     {
         $this->unschedule_update();
-        $this->schedule_update($new_schedule);
-        $this->logger->log("RSS更新计划已更新为: $new_schedule", 'info');
+        $result = $this->schedule_update($schedule);
+        if ($result === false) {
+            error_log('Failed to schedule update: ' . $schedule);
+        }
+        $this->logger->log("RSS更新计划已更新为: $schedule", 'info');
+        return $result;
     }
 
     public function add_custom_cron_interval($schedules)
